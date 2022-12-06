@@ -44,7 +44,7 @@ int get_line(LineList *lines, int index) {
     if (lines->capacity == 0) return -1;
     int line_index = 0;
     int count = lines->line_counts[line_index];
-    while (index > count) {
+    while (++index > count) {
 	if (line_index >= lines->count) return -1;
 	
 	index -= count;
