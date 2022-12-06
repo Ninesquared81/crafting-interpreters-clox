@@ -37,3 +37,16 @@ int add_constant(Chunk *chunk, Value value) {
     write_value_array(&chunk->constants, value);
     return chunk->constants.count - 1;
 }
+
+void write_constant(Chunk *chunk, Value value, int line) {
+    uint32_t constant = add_constant(chunk, value);
+    uint8_t op_code = constant <= 255u ? OP_CONSTANT : OP_CONSTANT_LONG;
+    write_chunk(chunk, op_code, line);
+    if (op_code == OP_CONSTANT_LONG) {
+	for (int i = 4; i > 0; i -= 2) {
+	    write_chunk(chunk, constant >> 4*i, line);
+	    constant &= 0xffffff >> (4-i);
+	}
+    }
+    write_chunk(chunk, constant, line);
+}
