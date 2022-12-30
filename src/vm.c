@@ -34,48 +34,48 @@ static InterpretResult run () {
     
     for (;;) {
 #ifdef DEBUG_TRACE_EXECUTION
-    printf("      ");
-    for (Value *slot = vm.stack; slot < vm.stack_top; ++slot) {
-        printf("[ ");
-        print_value(*slot);
-        printf(" ]");
-    }
-    printf("\n");
-    disassemble_instruction(vm.chunk, (int)(vm.ip - vm.chunk->code));
-#endif
-    uint8_t instruction;
-    switch (instruction = READ_BYTE()) {
-    case OP_CONSTANT: {
-        Value constant = READ_CONSTANT();
-        push(constant);
-        break;
-    }
-    case OP_CONSTANT_LONG: {
-        Value constant = READ_CONSTANT_LONG();
-        push(constant);
-        break;
-    }
-    case OP_ADD:
-        BINARY_OP(+);
-        break;
-    case OP_SUBTRACT:
-        BINARY_OP(-);
-        break;
-    case OP_MULTIPLY:
-        BINARY_OP(*);
-        break;
-    case OP_DIVIDE:
-        BINARY_OP(/);
-        break;
-    case OP_NEGATE:
-        push(-pop());
-        break;
-    case OP_RETURN: {
-        print_value(pop());
+        printf("      ");
+        for (Value *slot = vm.stack; slot < vm.stack_top; ++slot) {
+            printf("[ ");
+            print_value(*slot);
+            printf(" ]");
+        }
         printf("\n");
-        return INTERPRET_OK;
-    }
-    }    
+        disassemble_instruction(vm.chunk, (int)(vm.ip - vm.chunk->code));
+#endif
+        uint8_t instruction;
+        switch (instruction = READ_BYTE()) {
+        case OP_CONSTANT: {
+            Value constant = READ_CONSTANT();
+            push(constant);
+            break;
+        }
+        case OP_CONSTANT_LONG: {
+            Value constant = READ_CONSTANT_LONG();
+            push(constant);
+            break;
+        }
+        case OP_ADD:
+            BINARY_OP(+);
+            break;
+        case OP_SUBTRACT:
+            BINARY_OP(-);
+            break;
+        case OP_MULTIPLY:
+            BINARY_OP(*);
+            break;
+        case OP_DIVIDE:
+            BINARY_OP(/);
+            break;
+        case OP_NEGATE:
+            push(-pop());
+            break;
+        case OP_RETURN: {
+            print_value(pop());
+            printf("\n");
+            return INTERPRET_OK;
+        }
+        }
     }
 
 #undef READ_BYTE
@@ -85,9 +85,21 @@ static InterpretResult run () {
 }
 
 InterpretResult interpret(const char *source) {
-    compile(source);
-    (void)run;
-    return INTERPRET_OK;
+    Chunk chunk;
+    init_chunk(&chunk);
+    
+    if (!compile(source, &chunk)) {
+        free_chunk(&chunk);
+        return INTERPRET_COMPILE_ERROR;
+    }
+    
+    vm.chunk = &chunk;
+    vm.ip = vm.chunk->code;
+    
+    InterpretResult result = run();
+
+    free_chunk(&chunk);
+    return result;
 }
 
 void push(Value value) {
