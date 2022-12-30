@@ -19,10 +19,10 @@ void free_line_list(LineList *list) {
 
 static void new_line(LineList *lines, int line) {
     if (lines->capacity < lines->count + 1) {
-	int old_capacity = lines->capacity;
-	lines->capacity = GROW_CAPACITY(old_capacity);
-	lines->line_numbers = GROW_ARRAY(int, lines->line_numbers, old_capacity, lines->capacity);
-	lines->line_counts = GROW_ARRAY(int, lines->line_counts, old_capacity, lines->capacity);
+    int old_capacity = lines->capacity;
+    lines->capacity = GROW_CAPACITY(old_capacity);
+    lines->line_numbers = GROW_ARRAY(int, lines->line_numbers, old_capacity, lines->capacity);
+    lines->line_counts = GROW_ARRAY(int, lines->line_counts, old_capacity, lines->capacity);
     }
     
     lines->line_numbers[lines->count] = line;
@@ -32,10 +32,10 @@ static void new_line(LineList *lines, int line) {
 
 void add_line(LineList *lines, int line) {
     if (lines->capacity > 0 && line == lines->line_numbers[lines->count - 1]) {
-	++lines->line_counts[lines->count - 1];
+        ++lines->line_counts[lines->count - 1];
     }
     else {
-	new_line(lines, line);
+        new_line(lines, line);
     }
 
 }
@@ -45,10 +45,10 @@ int get_line(LineList *lines, int index) {
     int line_index = 0;
     int count = lines->line_counts[line_index];
     while (index >= count) {
-	if (line_index >= lines->count) return -2;
-	
-	index -= count;
-	count = lines->line_counts[++line_index];
+        if (line_index >= lines->count) return -2;
+        
+        index -= count;
+        count = lines->line_counts[++line_index];
     }
 
     return lines->line_numbers[line_index];
