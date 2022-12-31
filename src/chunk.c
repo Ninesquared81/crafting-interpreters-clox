@@ -34,6 +34,7 @@ void write_chunk(Chunk *chunk, uint8_t byte, int line) {
 }
 
 int add_constant(Chunk *chunk, Value value) {
+    // Check capacity of constant array here (to avoid wraparound/overflow errors) -- max = 3u * UINT8_MAX.
     write_value_array(&chunk->constants, value);
     return chunk->constants.count - 1;
 }
