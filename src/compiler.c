@@ -108,47 +108,60 @@ static void end_compiler(void) {
     emit_return();
 }
 
-static void grouping(void) {
-    expression();
-    consume(TOKEN_RIGHT_PAREN, "Expect ')' after expresion.");
-}
-
-static void number(void) {
-    double value = strtod(parser.previous.start, NULL);
-    emit_constant(value);
-}
-
-static void unary(void) {
+static void binary(void) {
     TokenType operator_type = parser.previous.type;
-
-    // Compile the operand.
-    parse_precedence(PREC_UNARY);
-
-    // Emit the operator instruction.
+    ParseRule *rule = get_rule(operator_type);
+    parse_precedence((Precedence)(rule->precedence + 1));
     switch (operator_type) {
+    case TOKEN_PLUS:    emit_byte(OP_ADD); break;
+    case TOKEN_MINUS:   emit_byte(OP_SUBTRACT); break;
+    case TOKEN_STAR:    emit_byte(OP_MULTIPLY); break;
+    case TOKEN_SLASH:   emit_byte(OP_DIVIDE); break;
+    default:
+        return;  // Unreachable.
+    }
+
+    static void grouping(void) {
+        expression();
+        consume(TOKEN_RIGHT_PAREN, "Expect ')' after expresion.");
+    }
+
+    static void number(void) {
+        double value = strtod(parser.previous.start, NULL);
+        emit_constant(value);
+    }
+
+    static void unary(void) {
+        TokenType operator_type = parser.previous.type;
+
+        // Compile the operand.
+        parse_precedence(PREC_UNARY);
+
+        // Emit the operator instruction.
+        switch (operator_type) {
         case TOKEN_MINUS: emit_byte(OP_NEGATE); break;
         default: return;  // Unreachable.
+        }
     }
-}
 
-static void parse_precedence(Precedence precedence) {
+    static void parse_precedence(Precedence precedence) {
 
-}
+    }
 
-static void expression(void) {
-    parse_precedence(PREC_ASSIGNMENT);
-}
+    static void expression(void) {
+        parse_precedence(PREC_ASSIGNMENT);
+    }
 
-bool compile(const char *source, Chunk *chunk) {
-    init_scanner(source);
-    compiling_chunk = chunk;
+    bool compile(const char *source, Chunk *chunk) {
+        init_scanner(source);
+        compiling_chunk = chunk;
 
-    parser.had_error = false;
-    parser.panic_mode = false;
+        parser.had_error = false;
+        parser.panic_mode = false;
 
-    advance();
-    expression();
-    consume(TOKEN_EOF, "Expect end of expression.");
-    end_compiler();
-    return !parser.had_error;
-}
+        advance();
+        expression();
+        consume(TOKEN_EOF, "Expect end of expression.");
+        end_compiler();
+        return !parser.had_error;
+    }
