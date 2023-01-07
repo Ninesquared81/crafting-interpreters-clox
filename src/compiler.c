@@ -65,6 +65,10 @@ static void error_at(Token *token, const char *message) {
     parser.had_error = true;
 }
 
+static void error(const char *message) {
+    error_at(&parser.previous, message);
+}
+
 static void error_at_current(const char *message) {
     error_at(&parser.current, message);
 }
@@ -101,25 +105,40 @@ static void emit_return(void) {
     emit_byte(OP_RETURN);
 }
 
-// TODO: use write_constant instead and move sanity check to there
-static uint8_t make_constant(Value value) {
-    int constant = add_constant(current_chunk(), value);
-    if (constant > UINT8_MAX) {
+static uint32_t make_constant(Value value) {
+    uint32_t constant = add_constant(current_chunk(), value);
+    // Check the higher bits are not set.
+    if (constant & 0xff000000) {
         error("Too many constants in one chunk");
         return 0;
     }
+    
+    uint8_t op_code = (constant <= UINT8_MAX) ? OP_CONSTANT : OP_CONSTANT_LONG;
 
-    return (uint8_t)constant;
+    // Put op_code into most significant byte
+    return constant ^ (op_code << 24);
 }
 
 static void emit_constant(Value value) {
-    emit_bytes(OP_CONSTANT, make_constant(value));
+    uint32_t bytes = make_constant(value);
+    uint8_t op_code = bytes >> 24;
+    bytes &= 0x00ffffff;
+
+    // Emit op-code
+    emit_byte(op_code);
+    if (op_code == OP_CONSTANT_LONG) {
+        // For a long constant, emit the two leading bytes.
+        emit_bytes(bytes >> 16, bytes >> 8);
+    }
+    // Emit least significant byte of constant.
+    emit_byte(bytes);
+
 }
 
 static void end_compiler(void) {
     emit_return();
-#ifdef DEBUG_PRINT)CODE
-    if (!parser.haderror) {
+#ifdef DEBUG_PRINT_CODE
+    if (!parser.had_error) {
         disassemble_chunk(current_chunk(), "code");
     }
 #endif
@@ -226,7 +245,7 @@ static void parse_precedence(Precedence precedence) {
     }
 }
 
-static void ParseRule *get_rule(TokenType type) {
+static ParseRule *get_rule(TokenType type) {
     return &rules[type];
 }
     
