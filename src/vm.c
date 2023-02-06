@@ -124,7 +124,11 @@ static InterpretResult run () {
             BINARY_OP(BOOL_VAL, <);
             break;
         case OP_ADD: {
-            if (IS_STRING(peek(0)) && IS_STRING(peek(1))) {
+            if (IS_STRING(peek(0)) || IS_STRING(peek(1))) {
+                ObjString *a = to_string(pop());
+                ObjString *b = to_string(pop());
+                push(OBJ_VAL((Obj *)b));
+                push(OBJ_VAL((Obj *)a));
                 concatenate();
             }
             else if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
