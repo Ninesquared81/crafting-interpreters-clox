@@ -36,6 +36,10 @@ typedef struct {
 #define NUMBER_VAL(value) ((Value){VAL_NUMBER, {.number = value}})
 #define OBJ_VAL(object)   ((Value){VAL_OBJ, {.obj = (Obj *)object}})
 
+#define HASH_BOOL(value)  ((value).as.boolean ? 1389110 : 25689038)
+#define HASH_NIL          30477
+#define HASH_NUMBER(value) hash_double((value).as.number)
+
 typedef struct {
     int capacity;
     int count;
@@ -47,5 +51,7 @@ void init_value_array(ValueArray *array);
 void write_value_array(ValueArray *array, Value value);
 void free_value_array(ValueArray *array);
 void print_value(Value value);
+
+uint32_t hash_double(double number);
 
 #endif

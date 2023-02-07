@@ -47,3 +47,17 @@ bool values_equal(Value a, Value b) {
     default:         return false;  // Unreachable.
     }
 }
+
+uint32_t hash_double(double number) {
+    uint32_t hash;    
+#define N_CHUNKS sizeof number / sizeof hash
+    uint32_t chunks[N_CHUNKS];
+    memcpy(chunks, &number, sizeof number);
+    
+    for (unsigned int i = 0; i < N_CHUNKS; ++i) {
+        hash ^= chunks[i];
+    }
+    
+    return hash;
+#undef N_CHUNKS
+}
