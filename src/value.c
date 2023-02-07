@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -49,15 +50,8 @@ bool values_equal(Value a, Value b) {
 }
 
 uint32_t hash_double(double number) {
-    uint32_t hash;    
-#define N_CHUNKS sizeof number / sizeof hash
-    uint32_t chunks[N_CHUNKS];
-    memcpy(chunks, &number, sizeof number);
-    
-    for (unsigned int i = 0; i < N_CHUNKS; ++i) {
-        hash ^= chunks[i];
-    }
-    
-    return hash;
-#undef N_CHUNKS
+    static_assert(sizeof number == 64);
+    union {double x; struct {uint32_t a, b;};} pun;
+    pun.x = number;
+    return pun.a ^ pun.b;
 }
