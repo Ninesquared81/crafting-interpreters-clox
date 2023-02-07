@@ -36,6 +36,7 @@ void print_value(Value value) {
     case VAL_OBJ: print_object(value); break;
     }
 }
+
 bool values_equal(Value a, Value b) {
     if (a.type != b.type) return false;
     switch (a.type) {
