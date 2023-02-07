@@ -51,7 +51,9 @@ bool values_equal(Value a, Value b) {
 
 uint32_t hash_double(double number) {
     static_assert(sizeof number == 64);
-    union {double x; struct {uint32_t a, b;};} pun;
+    if (number == 0 || isnan(number)) return 0;
+    if (isinf(number)) return UINT32_MAX;
+    union {double x; uint64_t n;} pun;
     pun.x = number;
-    return pun.a ^ pun.b;
+    return pun.n ^ (pun.n >> 32);
 }
