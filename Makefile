@@ -7,12 +7,15 @@ objects = $(patsubst src/%.c,bin/%.o,$(sources))
 
 out = bin/clox
 
-.PHONY: all clean
+.PHONY: all clean rebuild
 
 all: $(out)
 
 clean:
 	rm ./bin/*
+
+rebuild: clean
+	$(MAKE) all
 
 bin/%.o : src/%.c
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
