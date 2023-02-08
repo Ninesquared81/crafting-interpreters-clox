@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <math.h>
+
 #include <stdio.h>
 #include <string.h>
 
@@ -50,7 +52,7 @@ bool values_equal(Value a, Value b) {
 }
 
 uint32_t hash_double(double number) {
-    static_assert(sizeof number == 64);
+    static_assert(sizeof number == 8);
     if (number == 0 || isnan(number)) return 0;
     if (isinf(number)) return UINT32_MAX;
     union {double x; uint64_t n;} pun;
