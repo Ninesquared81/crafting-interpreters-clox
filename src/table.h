@@ -4,6 +4,15 @@
 #include "common.h"
 #include "value.h"
 
+#define EMPTY_KEY         ((Key){.type = KEY_EMPTY})
+#define TOMBSTONE_KEY     ((Key){.type = KEY_TOMBSTONE})
+
+#define STRING_KEY(value) ((Key){.type = KEY_STRING, .as.string = (value)})
+#define NUMBER_KEY(value) ((Key){.type = KEY_NUMBER, .as.number = (value)})
+#define BOOL_KEY(value)   ((Key){.type = KEY_BOOL, .as.boolean = (value)})
+#define NIL_KEY           ((Key){.type = KEY_NIL})
+
+
 typedef enum {
     // Dummy keys.
     KEY_EMPTY,
