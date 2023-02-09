@@ -27,7 +27,7 @@ static ObjString *allocate_string(char *chars, int length, uint32_t hash) {
     string->length = length;
     string->chars = chars;
     string->hash = hash;
-    table_set(&vm.strings, string, NIL_VAL);
+    table_set(&vm.strings, STRING_KEY(string), NIL_VAL);
     return string;
 }
 
