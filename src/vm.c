@@ -74,13 +74,15 @@ static void concatenate(void) {
 
 static InterpretResult run () {
 #define READ_BYTE() (*vm.ip++)
+#define READ_BYTES() (vm.ip += 3,                       \
+                      ((uint32_t)(*vm.ip-3) << 16) ^    \
+                      ((uint32_t)(*vm.ip-2) << 8)  ^    \
+                      ((uint32_t)(*vm.ip-1)))
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
-#define READ_CONSTANT_LONG() (*vm.ip += 3, vm.chunk->constants.values[  \
-                                  ((uint32_t)(*vm.ip-3) << 16) |        \
-                                  ((uint32_t)(*vm.ip-2) << 8)  |        \
-                                  (uint32_t)(*vm.ip-1)])
+#define READ_CONSTANT_LONG() (vm.chunk->constants.values[READ_BYTES()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
-    
+#define READ_STRING_LONG() AS_STRING(READ_CONSTANT_LONG())
+
 #define BINARY_OP(value_type, op)                               \
     do {                                                        \
         if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {       \
@@ -129,14 +131,39 @@ static InterpretResult run () {
             push(value);
             break;
         }
-        case OP_DEFINE_GLOBAL : {
+        case OP_GET_GLOBAL_LONG: {
+            ObjString *name = READ_STRING_LONG();
+            Value value;
+            if (!table_get(&vm.globals, STRING_KEY(name), &value)) {
+                runtime_error("Undefined variable '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            push(value);
+            break;
+        }
+        case OP_DEFINE_GLOBAL: {
             ObjString *name = READ_STRING();
+            table_set(&vm.globals, STRING_KEY(name), peek(0));
+            pop();
+            break;
+        }
+        case OP_DEFINE_GLOBAL_LONG: {
+            ObjString *name = READ_STRING_LONG();
             table_set(&vm.globals, STRING_KEY(name), peek(0));
             pop();
             break;
         }
         case OP_SET_GLOBAL: {
             ObjString *name = READ_STRING();
+            if (table_set(&vm.globals, STRING_KEY(name), peek(0))) {
+                table_delete(&vm.globals, STRING_KEY(name));
+                runtime_error("Undefined variable '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+        }
+        case OP_SET_GLOBAL_LONG: {
+            ObjString *name = READ_STRING_LONG();
             if (table_set(&vm.globals, STRING_KEY(name), peek(0))) {
                 table_delete(&vm.globals, STRING_KEY(name));
                 runtime_error("Undefined variable '%s'.", name->chars);

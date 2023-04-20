@@ -126,24 +126,31 @@ static uint32_t make_constant(Value value) {
     
     uint8_t op_code = (constant <= UINT8_MAX) ? OP_CONSTANT : OP_CONSTANT_LONG;
 
-    // Put op_code into most significant byte
+    // Put op_code into leading byte.
     return constant ^ (op_code << 24);
 }
 
-static void emit_constant(Value value) {
-    uint32_t bytes = make_constant(value);
-    uint8_t op_code = bytes >> 24;
-    bytes &= 0x00ffffff;
+static void emit_varint_instruction(uint32_t bytes) {
+    uint8_t instruction = bytes >> 24;
 
-    // Emit op-code
-    emit_byte(op_code);
-    if (op_code == OP_CONSTANT_LONG) {
-        // For a long constant, emit the two leading bytes.
+    // Emit opcode.
+    emit_byte(instruction);
+    switch (instruction) {
+    case OP_CONSTANT_LONG:
+    case OP_DEFINE_GLOBAL_LONG:
+    case OP_GET_GLOBAL_LONG:
+    case OP_SET_GLOBAL_LONG:
+        // Long instructions.
+        // Emit two leading bytes of index.
         emit_bytes(bytes >> 16, bytes >> 8);
     }
-    // Emit least significant byte of constant.
-    emit_byte(bytes);
+    // Emit final byte.
+    emit_byte((uint8_t)bytes);
+}
+    
 
+static void emit_constant(Value value) {
+    emit_varint_instruction(make_constant(value));
 }
 
 static void end_compiler(void) {
@@ -161,7 +168,7 @@ static void declaration(void);
 static ParseRule *get_rule(TokenType token);
 static void parse_precedence(Precedence precedence);
 
-static uint8_t identifier_constant(Token *name) {
+static uint32_t identifier_constant(Token *name) {
     return make_constant(OBJ_VAL(copy_string(name->start, name->length)));
 }
 
@@ -223,15 +230,17 @@ static void string(bool can_assign) {
 }
 
 static void named_variable(Token name, bool can_assign) {
-    uint8_t arg = identifier_constant(&name);
+    uint32_t arg = identifier_constant(&name);
+    uint8_t opcode;
 
     if (can_assign && match(TOKEN_EQUAL)) {
         expression();
-        emit_bytes(OP_SET_GLOBAL, arg);
+        opcode = (arg <= UINT8_MAX) ? OP_SET_GLOBAL : OP_SET_GLOBAL_LONG;
     }
     else {
-        emit_bytes(OP_GET_GLOBAL, arg);
+        opcode = (arg <= UINT8_MAX) ? OP_GET_GLOBAL : OP_GET_GLOBAL_LONG;
     }
+    emit_varint_instruction(arg ^ (opcode << 24));
 }
 
 static void variable(bool can_assign) {
@@ -320,13 +329,14 @@ static void parse_precedence(Precedence precedence) {
     }
 }
 
-static uint8_t parse_variable(const char *error_message) {
+static uint32_t parse_variable(const char *error_message) {
     consume(TOKEN_IDENTIFIER, error_message);
     return identifier_constant(&parser.previous);
 }
 
-static void define_variable(uint8_t global) {
-    emit_bytes(OP_DEFINE_GLOBAL, global);
+static void define_variable(uint32_t global) {
+    uint8_t opcode = (global >> 24 == OP_CONSTANT) ? OP_DEFINE_GLOBAL : OP_DEFINE_GLOBAL_LONG;
+    emit_varint_instruction(global ^ (opcode << 24));
 }
 
 static ParseRule *get_rule(TokenType type) {
@@ -338,7 +348,7 @@ static void expression(void) {
 }
 
 static void var_declaration(void) {
-    uint8_t global = parse_variable("Expect variable name.");
+    uint32_t global = parse_variable("Expect variable name.");
 
     if (match(TOKEN_EQUAL)) {
         expression();

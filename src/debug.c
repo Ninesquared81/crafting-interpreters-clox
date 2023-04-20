@@ -60,10 +60,16 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return simple_instruction("OP_POP", offset);
     case OP_GET_GLOBAL:
         return constant_instruction("OP_GET_GLOBAL", chunk, offset);
+    case OP_GET_GLOBAL_LONG:
+        return constant_instruction("OP_GET_GLOBAL_LONG", chunk, offset);
     case OP_DEFINE_GLOBAL:
         return constant_instruction("OP_DEFINE_GLOBAL", chunk, offset);
+    case OP_DEFINE_GLOBAL_LONG:
+        return constant_instruction("OP_DEFINE_GLOBAL_LONG", chunk, offset);
     case OP_SET_GLOBAL:
         return constant_instruction("OP_SET_GLOBAL", chunk, offset);
+    case OP_SET_GLOBAL_LONG:
+        return constant_instruction("OP_SET_GLOBAL_LONG", chunk, offset);
     case OP_EQUAL:
         return simple_instruction("OP_EQUAL", offset);
     case OP_GREATER:

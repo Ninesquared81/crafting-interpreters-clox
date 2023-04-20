@@ -45,7 +45,7 @@ static bool compare_keys(Key a, Key b) {
 
 static Entry *find_entry(Entry *entries, int capacity, Key key) {
     uint32_t index = hash_of(key) % capacity;
-    Entry *tombstone;
+    Entry *tombstone = NULL;
 
     for (;;) {
         Entry *entry = &entries[index];
@@ -94,7 +94,7 @@ bool table_get(Table *table, Key key, Value *value) {
     if (table->count == 0) return false;
 
     Entry *entry = find_entry(table->entries, table->capacity, key);
-    if (IS_UNOCCUPIED(entry->key)) false;
+    if (IS_UNOCCUPIED(entry->key)) return false;
 
     *value = entry->value;
     return true;
