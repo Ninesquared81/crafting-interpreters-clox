@@ -22,7 +22,7 @@ void free_chunk(Chunk *chunk) {
 
 void write_chunk(Chunk *chunk, uint8_t byte, int line) {
     if (chunk->capacity < chunk->count + 1) {
-        uint32_t old_capacity = chunk->capacity;
+        int old_capacity = chunk->capacity;
         chunk->capacity = GROW_CAPACITY(old_capacity);
         chunk->code = GROW_ARRAY(uint8_t, chunk->code, old_capacity, chunk->capacity);
     }
@@ -33,9 +33,25 @@ void write_chunk(Chunk *chunk, uint8_t byte, int line) {
     add_line(&chunk->lines, line);
 }
 
+static uint32_t find_index(ValueArray *array, Value value) {
+#define MAX_SEARCH_DEPTH 256
+    uint32_t index = (array->count < MAX_SEARCH_DEPTH) ? 0 : array->count - MAX_SEARCH_DEPTH;
+
+    while (index < array->count && !values_equal(array->values[index], value)) {
+        ++index;
+    }
+
+    return index;
+#undef MAX_SEARCH_DEPTH    
+}
+
 uint32_t add_constant(Chunk *chunk, Value value) {
-    write_value_array(&chunk->constants, value);
-    return chunk->constants.count - 1;
+    ValueArray *constants = &chunk->constants;
+    uint32_t index = find_index(constants, value);
+    if (index >= constants->count) {
+        write_value_array(constants, value);
+    }
+    return index;
 }
 
 void write_constant(Chunk *chunk, Value value, int line) {
