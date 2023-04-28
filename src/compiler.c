@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "common.h"
 #include "compiler.h"
 #include "chunk.h"
+#include "memory.h"
 #include "scanner.h"
 
 #ifdef DEBUG_PRINT_CODE
@@ -43,11 +45,13 @@ typedef struct {
 typedef struct {
     Token name;
     int depth;
+    bool is_mutable;
 } Local;
 
 typedef struct {
-    Local locals[UINT8_COUNT];
-    int local_count;
+    Local *locals;
+    uint32_t local_count;
+    uint32_t local_capacity;
     int scope_depth;
 } Compiler;
 
@@ -136,10 +140,7 @@ static uint32_t make_constant(Value value) {
         return 0;
     }
     
-    uint8_t op_code = (constant <= UINT8_MAX) ? OP_CONSTANT : OP_CONSTANT_LONG;
-
-    // Put op_code into leading byte.
-    return constant ^ (op_code << 24);
+    return constant;
 }
 
 static void emit_varint_instruction(uint32_t bytes) {
@@ -147,12 +148,7 @@ static void emit_varint_instruction(uint32_t bytes) {
 
     // Emit opcode.
     emit_byte(instruction);
-    switch (instruction) {
-    case OP_CONSTANT_LONG:
-    case OP_DEFINE_GLOBAL_LONG:
-    case OP_GET_GLOBAL_LONG:
-    case OP_SET_GLOBAL_LONG:
-        // Long instructions.
+    if (IS_LONG_INSTRUCTION(instruction)) {
         // Emit two leading bytes of index.
         emit_bytes(bytes >> 16, bytes >> 8);
     }
@@ -162,17 +158,32 @@ static void emit_varint_instruction(uint32_t bytes) {
     
 
 static void emit_constant(Value value) {
-    emit_varint_instruction(make_constant(value));
+    uint32_t constant = make_constant(value);
+    uint8_t op_code = (constant <= UINT8_MAX) ? OP_CONSTANT : OP_CONSTANT_LONG;
+
+    emit_varint_instruction(constant ^ (op_code << 24));
 }
 
 static void init_compiler(Compiler *compiler) {
+    compiler->locals = NULL;
     compiler->local_count = 0;
+    compiler->local_capacity = 0;
     compiler->scope_depth = 0;
     current = compiler;
 }
 
+static void free_compiler(Compiler *compiler) {
+    FREE_ARRAY(Local, compiler->locals, compiler->local_count);
+    compiler->locals = NULL;
+    compiler->local_count = 0;
+    compiler->local_capacity = 0;
+    compiler->scope_depth = 0;
+}
+
 static void end_compiler(void) {
     emit_return();
+    free_compiler(current);
+    
 #ifdef DEBUG_PRINT_CODE
     if (!parser.had_error) {
         disassemble_chunk(current_chunk(), "code");
@@ -186,6 +197,16 @@ static void begin_scope(void) {
 
 static void end_scope(void) {
     current->scope_depth--;
+
+    uint32_t pop_count = 0;
+    while (current->local_count > 0 &&
+           current->locals[current->local_count - 1].depth > current->scope_depth) {
+        pop_count++;
+        current->local_count--;
+    }
+
+    uint8_t op_code = (pop_count <= UINT8_MAX) ? OP_POPN : OP_POPN_LONG;
+    emit_varint_instruction(pop_count ^ (op_code << 24));
 }
 
 static void expression(void);
@@ -196,6 +217,60 @@ static void parse_precedence(Precedence precedence);
 
 static uint32_t identifier_constant(Token *name) {
     return make_constant(OBJ_VAL(copy_string(name->start, name->length)));
+}
+
+static bool identifiers_equal(Token *a, Token *b) {
+    if (a->length != b->length) return false;
+    return memcmp(a->start, b->start, a->length) == 0;
+}
+
+static uint32_t resolve_local(Compiler *compiler, Token *name) {
+    for (Local *iter = compiler->locals + compiler->local_count; iter > compiler->locals; --iter) {
+        Local *local = iter - 1;
+        if (identifiers_equal(name, &local->name)) {
+            if (local->depth == -1) {
+                error("Can't read local variable in its own initializer.");
+            }
+            return local - compiler->locals;
+        }
+    }
+
+    return -1;
+}
+
+static void add_local(Token name, bool is_mutable) {
+    if (current->local_count == UINT24_COUNT) {
+        error("Too many local variables in function.");
+        return;
+    }
+    if (current->local_capacity < current->local_count + 1) {
+        uint32_t old_capacity = current->local_capacity;
+        current->local_capacity = GROW_CAPACITY(old_capacity);
+        current->locals = GROW_ARRAY(Local, current->locals, old_capacity, current->local_capacity);
+    }
+    
+    Local *local = &current->locals[current->local_count++];
+    local->name = name;
+    local->depth = -1;
+    local->is_mutable = is_mutable;
+}
+
+static void declare_variable(bool is_mutable) {
+    if (current->scope_depth == 0) return;
+
+    Token *name = &parser.previous;
+    for (Local *iter = current->locals + current->local_count; iter > current->locals; --iter) {
+        Local *local = iter - 1;
+        if (local->depth != -1 && local->depth < current->scope_depth) {
+            break;
+        }
+
+        if (identifiers_equal(name, &local->name)) {
+            error("Already a variable with this name in this scope.");
+        }
+    }
+    
+    add_local(*name, is_mutable);
 }
 
 static void binary(bool can_assign) {
@@ -256,17 +331,31 @@ static void string(bool can_assign) {
 }
 
 static void named_variable(Token name, bool can_assign) {
-    uint32_t arg = identifier_constant(&name);
-    uint8_t opcode;
+    uint32_t arg = resolve_local(current, &name);
+    uint8_t get_op, set_op;
+    bool is_local = false;
 
-    if (can_assign && match(TOKEN_EQUAL)) {
-        expression();
-        opcode = (arg <= UINT8_MAX) ? OP_SET_GLOBAL : OP_SET_GLOBAL_LONG;
+    if (arg != (unsigned)-1) {
+        is_local = true;
+        get_op = (arg <= UINT8_MAX) ? OP_GET_LOCAL : OP_GET_LOCAL_LONG;
+        set_op = (arg <= UINT8_MAX) ? OP_SET_LOCAL : OP_SET_LOCAL_LONG;
     }
     else {
-        opcode = (arg <= UINT8_MAX) ? OP_GET_GLOBAL : OP_GET_GLOBAL_LONG;
+        arg = identifier_constant(&name);
+        get_op = (arg <= UINT8_MAX) ? OP_GET_GLOBAL : OP_GET_GLOBAL_LONG;
+        set_op = (arg <= UINT8_MAX) ? OP_SET_GLOBAL : OP_SET_GLOBAL_LONG;
     }
-    emit_varint_instruction(arg ^ (opcode << 24));
+
+    if (can_assign && match(TOKEN_EQUAL)) {
+        if (is_local && !current->locals[arg].is_mutable) {
+            error("Cannot assign to a val variable.");
+        }
+        expression();
+        emit_varint_instruction(arg ^ (set_op << 24));
+    }
+    else {
+        emit_varint_instruction(arg ^ (get_op << 24));
+    }
 }
 
 static void variable(bool can_assign) {
@@ -327,6 +416,7 @@ ParseRule rules[] = {
     [TOKEN_SUPER]         = {NULL,       NULL,        PREC_NONE},
     [TOKEN_THIS]          = {NULL,       NULL,        PREC_NONE},
     [TOKEN_TRUE]          = {literal,    NULL,        PREC_NONE},
+    [TOKEN_VAL]           = {NULL,       NULL,        PREC_NONE},
     [TOKEN_VAR]           = {NULL,       NULL,        PREC_NONE},
     [TOKEN_WHILE]         = {NULL,       NULL,        PREC_NONE},
     [TOKEN_ERROR]         = {NULL,       NULL,        PREC_NONE},
@@ -355,14 +445,28 @@ static void parse_precedence(Precedence precedence) {
     }
 }
 
-static uint32_t parse_variable(const char *error_message) {
+static uint32_t parse_variable(const char *error_message, bool is_mutable) {
     consume(TOKEN_IDENTIFIER, error_message);
+
+    declare_variable(is_mutable);
+    if (current->scope_depth > 0) return 0;
+    
     return identifier_constant(&parser.previous);
 }
 
-static void define_variable(uint32_t global) {
+static void mark_initialized(void) {
+    current->locals[current->local_count - 1].depth = current->scope_depth;
+}
+
+static void define_variable(uint32_t global, bool is_mutable) {
+    if (current->scope_depth > 0) {
+        mark_initialized();
+        return;
+    }
+    
     uint8_t opcode = (global >> 24 == OP_CONSTANT) ? OP_DEFINE_GLOBAL : OP_DEFINE_GLOBAL_LONG;
     emit_varint_instruction(global ^ (opcode << 24));
+    emit_byte(is_mutable);
 }
 
 static ParseRule *get_rule(TokenType type) {
@@ -381,18 +485,23 @@ static void block(void) {
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
-static void var_declaration(void) {
-    uint32_t global = parse_variable("Expect variable name.");
+static void var_declaration(bool is_mutable) {
+    uint32_t global = parse_variable("Expect variable name.", is_mutable);
 
     if (match(TOKEN_EQUAL)) {
         expression();
     }
     else {
-        emit_byte(OP_NIL);
+        if (is_mutable) {
+            emit_byte(OP_NIL);
+        }
+        else {
+            error("Val declaration must have an initializer.");
+        }
     }
     consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
 
-    define_variable(global);
+    define_variable(global, is_mutable);
 }
 
 static void expression_statement(void) {
@@ -415,6 +524,7 @@ static void synchronize(void) {
         switch (parser.current.type) {
         case TOKEN_CLASS:
         case TOKEN_FUN:
+        case TOKEN_VAL:
         case TOKEN_VAR:
         case TOKEN_FOR:
         case TOKEN_IF:
@@ -433,7 +543,10 @@ static void synchronize(void) {
 
 static void declaration(void) {
     if (match(TOKEN_VAR)) {
-        var_declaration();
+        var_declaration(true);
+    }
+    else if (match(TOKEN_VAL)) {
+        var_declaration(false);
     }
     else {
         statement();
@@ -446,7 +559,7 @@ static void statement(void) {
     if (match(TOKEN_PRINT)) {
         print_statement();
     }
-    else if (math(TOKEN_LEFT_BRACE)) {
+    else if (match(TOKEN_LEFT_BRACE)) {
         begin_scope();
         block();
         end_scope();

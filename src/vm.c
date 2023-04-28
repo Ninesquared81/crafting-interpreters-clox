@@ -15,6 +15,13 @@ static void reset_stack(void) {
     vm.stack_top = vm.stack;
 }
 
+static void free_stack(void) {
+    FREE_ARRAY(Value, vm.stack, vm.stack_capacity);
+    vm.stack = NULL;
+    vm.stack_capacity = 0;
+    reset_stack();
+}
+
 static void runtime_error(const char *format, ...) {
     va_list args;
     va_start(args, format);
@@ -34,21 +41,35 @@ void init_vm(void) {
 
     init_table(&vm.globals);
     init_table(&vm.strings);
+    init_set(&vm.immutable_globals);
 }
 
 void free_vm(void) {
     free_table(&vm.globals);
     free_table(&vm.strings);
-
+    free_set(&vm.immutable_globals);
+    free_stack();
+    
     free_objects();
 }
 
 void push(Value value) {
+    if (vm.stack == NULL || vm.stack_top >= vm.stack + vm.stack_capacity) {
+        size_t old_capacity = vm.stack_capacity;
+        vm.stack_capacity = GROW_CAPACITY(old_capacity);
+        vm.stack = GROW_ARRAY(Value, vm.stack, old_capacity, vm.stack_capacity);
+        vm.stack_top = vm.stack + old_capacity;
+    }
     *vm.stack_top++ = value;
 }
 
 Value pop(void) {
     return *--vm.stack_top;
+}
+
+static Value popn(uint32_t n) {
+    vm.stack_top -= n;
+    return *vm.stack_top;
 }
 
 static Value peek(int distance) {
@@ -75,9 +96,9 @@ static void concatenate(void) {
 static InterpretResult run () {
 #define READ_BYTE() (*vm.ip++)
 #define READ_BYTES() (vm.ip += 3,                       \
-                      ((uint32_t)(*vm.ip-3) << 16) ^    \
-                      ((uint32_t)(*vm.ip-2) << 8)  ^    \
-                      ((uint32_t)(*vm.ip-1)))
+                      ((uint32_t)vm.ip[-3] << 16) ^     \
+                      ((uint32_t)vm.ip[-2] << 8)  ^    \
+                      ((uint32_t)vm.ip[-1]     ))
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
 #define READ_CONSTANT_LONG() (vm.chunk->constants.values[READ_BYTES()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
@@ -121,6 +142,8 @@ static InterpretResult run () {
         case OP_TRUE: push(BOOL_VAL(true)); break;
         case OP_FALSE: push(BOOL_VAL(false)); break;
         case OP_POP: pop(); break;
+        case OP_POPN: popn(READ_BYTE()); break;
+        case OP_POPN_LONG: popn(READ_BYTES()); break;
         case OP_GET_GLOBAL: {
             ObjString *name = READ_STRING();
             Value value;
@@ -141,20 +164,48 @@ static InterpretResult run () {
             push(value);
             break;
         }
+        case OP_GET_LOCAL: {
+            uint8_t slot = READ_BYTE();
+            push(vm.stack[slot]);
+            break;
+        }
+        case OP_GET_LOCAL_LONG: {
+            uint32_t slot = READ_BYTES();
+            push(vm.stack[slot]);
+            break;
+        }
         case OP_DEFINE_GLOBAL: {
             ObjString *name = READ_STRING();
-            table_set(&vm.globals, STRING_KEY(name), peek(0));
+            Key key = STRING_KEY(name);
+            table_set(&vm.globals, key, peek(0));
             pop();
+            if (READ_BYTE()) {
+                set_delete(&vm.immutable_globals, key);
+            }
+            else {
+                set_add(&vm.immutable_globals, key);
+            }
             break;
         }
         case OP_DEFINE_GLOBAL_LONG: {
             ObjString *name = READ_STRING_LONG();
-            table_set(&vm.globals, STRING_KEY(name), peek(0));
+            Key key = STRING_KEY(name);
+            table_set(&vm.globals, key, peek(0));
             pop();
+            if (READ_BYTE()) {
+                set_delete(&vm.immutable_globals, key);
+            }
+            else {
+                set_add(&vm.immutable_globals, key);
+            }
             break;
         }
         case OP_SET_GLOBAL: {
             ObjString *name = READ_STRING();
+            if (set_check(&vm.immutable_globals, STRING_KEY(name))) {
+                runtime_error("Cannot assign to a val.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
             if (table_set(&vm.globals, STRING_KEY(name), peek(0))) {
                 table_delete(&vm.globals, STRING_KEY(name));
                 runtime_error("Undefined variable '%s'.", name->chars);
@@ -164,11 +215,25 @@ static InterpretResult run () {
         }
         case OP_SET_GLOBAL_LONG: {
             ObjString *name = READ_STRING_LONG();
+            if (set_check(&vm.immutable_globals, STRING_KEY(name))) {
+                runtime_error("Cannot assign to a val.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
             if (table_set(&vm.globals, STRING_KEY(name), peek(0))) {
                 table_delete(&vm.globals, STRING_KEY(name));
                 runtime_error("Undefined variable '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
+            break;
+        }
+        case OP_SET_LOCAL: {
+            uint8_t slot = READ_BYTE();
+            vm.stack[slot] = peek(0);
+            break;
+        }
+        case OP_SET_LOCAL_LONG: {
+            uint32_t slot = READ_BYTES();
+            vm.stack[slot] = peek(0);
             break;
         }
         case OP_EQUAL: {

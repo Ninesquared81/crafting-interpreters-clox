@@ -2,17 +2,20 @@
 #define CLOX_VM_H
 
 #include "chunk.h"
+#include "set.h"
 #include "table.h"
 #include "value.h"
 
-#define STACK_MAX 256
+//#define STACK_MAX 256
 
 typedef struct {
     Chunk *chunk;
     uint8_t *ip;
-    Value stack[STACK_MAX];
+    Value *stack;
     Value *stack_top;
+    size_t stack_capacity;
     Table globals;
+    Set immutable_globals;
     Table strings;
     Obj *objects;
 } VM;

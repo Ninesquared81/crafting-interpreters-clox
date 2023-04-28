@@ -11,6 +11,33 @@ void disassemble_chunk(Chunk *chunk, const char *name) {
     }
 }
 
+static uint32_t get_uint24(Chunk *chunk, int offset) {
+    uint32_t constant = 0;
+    for (int i = 1; i <= 3; ++i) {
+        constant <<= 8;
+        constant |= chunk->code[offset + i];
+    }
+    return constant;
+}
+
+static int define_instruction(const char *name, Chunk *chunk, int offset) {
+    uint8_t constant = chunk->code[offset + 1];
+    uint8_t is_mutable = chunk->code[offset + 2];
+    printf("%-16s %d '", name, constant);
+    print_value(chunk->constants.values[constant]);
+    printf("' %d\n", is_mutable);
+    return offset + 3;
+}
+
+static int define_long_instruction(const char *name, Chunk *chunk, int offset) {
+    uint32_t constant = get_uint24(chunk, offset);
+    uint8_t is_mutable = chunk->code[offset + 4];
+    printf("%-16s %d '", name, constant);
+    print_value(chunk->constants.values[constant]);
+    printf("' %d\n", is_mutable);
+    return offset + 5;
+}
+
 static int constant_instruction(const char *name, Chunk *chunk, int offset) {
     uint8_t constant = chunk->code[offset + 1];
     printf("%-16s %d '", name, constant);
@@ -20,11 +47,7 @@ static int constant_instruction(const char *name, Chunk *chunk, int offset) {
 }
 
 static int constant_long_instruction(const char *name, Chunk *chunk, int offset) {
-    uint32_t constant = 0;
-    for (int i = 1; i <= 3; ++i) {
-        constant <<= 8;
-        constant |= chunk->code[offset + i];
-    }
+    uint32_t constant = get_uint24(chunk, offset);
     printf("%-16s %d '", name, constant);
     print_value(chunk->constants.values[constant]);
     printf("'\n");
@@ -34,6 +57,18 @@ static int constant_long_instruction(const char *name, Chunk *chunk, int offset)
 static int simple_instruction(const char *name, int offset) {
     printf("%s\n", name);
     return offset + 1;
+}
+
+static int byte_instruction(const char *name, Chunk *chunk, int offset) {
+    uint8_t slot = chunk->code[offset + 1];
+    printf("%-16s %4d\n", name, slot);
+    return offset + 2;
+}
+
+static int byte_long_instruction(const char *name, Chunk *chunk, int offset) {
+    uint32_t slot = get_uint24(chunk, offset);
+    printf("%-16s %4d\n", name, slot);
+    return offset + 4;
 }
 
 int disassemble_instruction(Chunk *chunk, int offset) {
@@ -58,18 +93,30 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return simple_instruction("OP_FALSE", offset);
     case OP_POP:
         return simple_instruction("OP_POP", offset);
+    case OP_POPN:
+        return byte_instruction("OP_POPN", chunk, offset);
+    case OP_POPN_LONG:
+        return byte_long_instruction("OP_POPN_LONG", chunk, offset);
     case OP_GET_GLOBAL:
         return constant_instruction("OP_GET_GLOBAL", chunk, offset);
     case OP_GET_GLOBAL_LONG:
-        return constant_instruction("OP_GET_GLOBAL_LONG", chunk, offset);
+        return constant_long_instruction("OP_GET_GLOBAL_LONG", chunk, offset);
+    case OP_GET_LOCAL:
+        return byte_instruction("OP_GET_LOCAL", chunk, offset);
+    case OP_GET_LOCAL_LONG:
+        return byte_long_instruction("OP_GET_LOCAL_LONG", chunk, offset);
     case OP_DEFINE_GLOBAL:
-        return constant_instruction("OP_DEFINE_GLOBAL", chunk, offset);
+        return define_instruction("OP_DEFINE_GLOBAL", chunk, offset);
     case OP_DEFINE_GLOBAL_LONG:
-        return constant_instruction("OP_DEFINE_GLOBAL_LONG", chunk, offset);
+        return define_long_instruction("OP_DEFINE_GLOBAL_LONG", chunk, offset);
     case OP_SET_GLOBAL:
         return constant_instruction("OP_SET_GLOBAL", chunk, offset);
     case OP_SET_GLOBAL_LONG:
-        return constant_instruction("OP_SET_GLOBAL_LONG", chunk, offset);
+        return constant_long_instruction("OP_SET_GLOBAL_LONG", chunk, offset);
+    case OP_SET_LOCAL:
+        return byte_instruction("OP_SET_LOCAL", chunk, offset);
+    case OP_SET_LOCAL_LONG:
+        return byte_long_instruction("OP_SET_LOCAL_LONG", chunk, offset);
     case OP_EQUAL:
         return simple_instruction("OP_EQUAL", offset);
     case OP_GREATER:

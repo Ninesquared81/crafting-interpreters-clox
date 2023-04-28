@@ -132,8 +132,15 @@ static TokenType identifier_type(void) {
             case 'r': return check_keyword(2, 2, "ue", TOKEN_TRUE);
             }
         }
-    break;
-    case 'v': return check_keyword(1, 2, "ar", TOKEN_VAR);
+        break;
+    case 'v':
+        if (scanner.current - scanner.start > 2 && scanner.start[1] == 'a') {
+            switch (scanner.start[2]) {
+            case 'l': return TOKEN_VAL;
+            case 'r': return TOKEN_VAR;
+            }
+        }
+        return TOKEN_IDENTIFIER;
     case 'w': return check_keyword(1, 4, "hile", TOKEN_WHILE);
     }
     
