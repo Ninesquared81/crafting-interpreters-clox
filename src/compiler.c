@@ -224,6 +224,14 @@ static void end_scope(void) {
         current->local_count--;
     }
 
+    if (pop_count == 1) {
+        emit_byte(OP_POP);
+        return;
+    }
+    else if (pop_count == 0) {
+        return;
+    }
+    
     uint8_t op_code = (pop_count <= UINT8_MAX) ? OP_POPN : OP_POPN_LONG;
     emit_varint_instruction(pop_count ^ (op_code << 24));
 }
