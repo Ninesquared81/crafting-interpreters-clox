@@ -351,6 +351,19 @@ static void number(bool can_assign) {
     emit_constant(NUMBER_VAL(value));
 }
 
+static void or(bool can_assign) {
+    (void)can_assign;
+
+    int else_jump = emit_jump(OP_JUMP_IF_FALSE);
+    int end_jump = emit_jump(OP_JUMP);
+
+    patch_jump(else_jump);
+    emit_byte(OP_POP);
+
+    parse_precedence(PREC_OR);
+    patch_jump(end_jump);
+}
+
 static void string(bool can_assign) {
     (void)can_assign;
     emit_constant(OBJ_VAL(copy_string(parser.previous.start + 1,
@@ -429,7 +442,7 @@ ParseRule rules[] = {
     [TOKEN_IDENTIFIER]    = {variable,   NULL,        PREC_NONE},
     [TOKEN_STRING]        = {string,     NULL,        PREC_NONE},
     [TOKEN_NUMBER]        = {number,     NULL,        PREC_NONE},
-    [TOKEN_AND]           = {NULL,       NULL,        PREC_NONE},
+    [TOKEN_AND]           = {NULL,       and,         PREC_AND},
     [TOKEN_CLASS]         = {NULL,       NULL,        PREC_NONE},
     [TOKEN_ELSE]          = {NULL,       NULL,        PREC_NONE},
     [TOKEN_FALSE]         = {literal,    NULL,        PREC_NONE},
@@ -437,7 +450,7 @@ ParseRule rules[] = {
     [TOKEN_FUN]           = {NULL,       NULL,        PREC_NONE},
     [TOKEN_IF]            = {NULL,       NULL,        PREC_NONE},
     [TOKEN_NIL]           = {literal,    NULL,        PREC_NONE},
-    [TOKEN_OR]            = {NULL,       NULL,        PREC_NONE},
+    [TOKEN_OR]            = {NULL,       or,          PREC_OR},
     [TOKEN_PRINT]         = {NULL,       NULL,        PREC_NONE},
     [TOKEN_RETURN]        = {NULL,       NULL,        PREC_NONE},
     [TOKEN_SUPER]         = {NULL,       NULL,        PREC_NONE},
@@ -494,6 +507,17 @@ static void define_variable(uint32_t global, bool is_mutable) {
     uint8_t opcode = (global >> 24 == OP_CONSTANT) ? OP_DEFINE_GLOBAL : OP_DEFINE_GLOBAL_LONG;
     emit_varint_instruction(global ^ (opcode << 24));
     emit_byte(is_mutable);
+}
+
+static void and(bool can_assign) {
+    (void)can_assign;
+
+    int end_jump = emit_jump(OP_JUMP_IF_FALSE);
+
+    emit_byte(OP_POP);
+    parse_precedence(PREC_AND);
+
+    patch_jump(end_jump);
 }
 
 static ParseRule *get_rule(TokenType type) {
