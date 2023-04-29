@@ -305,6 +305,11 @@ static InterpretResult run () {
             if (is_falsey(peek(0))) vm.ip += offset;
             break;
         }
+        case OP_LOOP: {
+            uint16_t offset = READ_SHORT();
+            vm.ip -= offset;
+            break;
+        }
         case OP_RETURN: {
             // Exit interpreter.
             return INTERPRET_OK;
