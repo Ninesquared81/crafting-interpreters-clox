@@ -5,6 +5,7 @@
 #include "common.h"
 #include "compiler.h"
 #include "chunk.h"
+#include "loop.h"
 #include "memory.h"
 #include "scanner.h"
 
@@ -53,6 +54,7 @@ typedef struct {
     uint32_t local_count;
     uint32_t local_capacity;
     int scope_depth;
+    LoopStack loops;
 } Compiler;
 
 Parser parser;
@@ -193,11 +195,24 @@ static void patch_jump(int offset) {
     current_chunk()->code[offset + 1] = jump & 0xff;
 }
 
+static void patch_loop(int offset, int loop_start) {
+    // Need to add 2 since we're jumping BACKWARDS.
+    int jump = offset - loop_start + 2;
+
+    if (jump > UINT16_MAX) {
+        error("Too much code to jump over.");
+    }
+
+    current_chunk()->code[offset] = (jump >> 8) & 0xff;
+    current_chunk()->code[offset + 1] = jump & 0xff;
+}
+
 static void init_compiler(Compiler *compiler) {
     compiler->locals = NULL;
     compiler->local_count = 0;
     compiler->local_capacity = 0;
     compiler->scope_depth = 0;
+    init_loop_stack(&compiler->loops);
     current = compiler;
 }
 
@@ -207,6 +222,7 @@ static void free_compiler(Compiler *compiler) {
     compiler->local_count = 0;
     compiler->local_capacity = 0;
     compiler->scope_depth = 0;
+    free_loop_stack(&compiler->loops);
 }
 
 static void end_compiler(void) {
@@ -571,6 +587,27 @@ static void var_declaration(bool is_mutable) {
     define_variable(global, is_mutable);
 }
 
+static void break_statement(void) {
+    int jump = emit_jump(OP_JUMP);
+    // Jump is patched by containing loop.
+
+    if (!push_break(&current->loops, jump)) {
+        error("Cannot have 'break' outside of loop.");
+    }
+
+    consume(TOKEN_SEMICOLON, "Expect ';' after 'break'.");
+}
+
+static void continue_statement(void) {
+    int jump = emit_jump(OP_LOOP);  // Needs to be patched by containing loop.
+
+    if (!push_continue(&current->loops, jump)) {
+        error("Cannot have 'continue' outside of loop.");
+    }
+
+    consume(TOKEN_SEMICOLON, "Expect ';' after 'continue'.");
+}
+
 static void expression_statement(void) {
     expression();
     consume(TOKEN_SEMICOLON, "Expect ';' after expression.");
@@ -578,7 +615,9 @@ static void expression_statement(void) {
 }
 
 static void for_statement(void) {
+    push_loop_stack(&current->loops, NEW_LOOP);
     begin_scope();
+
     consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
     if (match(TOKEN_SEMICOLON)) {
         // No initializer.
@@ -625,6 +664,7 @@ static void for_statement(void) {
     }
 
     end_scope();
+    pop_loop_stack(&current->loops);
 }
 
 static void if_statement(void) {
@@ -652,6 +692,8 @@ static void print_statement(void) {
 }
 
 static void while_statement(void) {
+    push_loop_stack(&current->loops, NEW_LOOP);
+    
     int loop_start = current_chunk()->count;
     consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
     expression();
@@ -664,6 +706,16 @@ static void while_statement(void) {
     
     patch_jump(exit_jump);
     emit_byte(OP_POP);
+    
+    Loop loop = pop_loop_stack(&current->loops);
+    // Loop through each break statement inside loop and patch them.
+    for (int *jump = loop.breaks.offsets; jump < loop.breaks.offsets + loop.breaks.count; ++jump) {
+        patch_jump(*jump);
+    }
+    // Loop through each continue statement inside loop and patch them.
+    for (int *jump = loop.continues.offsets; jump < loop.continues.offsets + loop.continues.count; ++jump) {
+        patch_loop(*jump, loop_start);
+    }
 }
 
 static void synchronize(void) {
@@ -722,6 +774,12 @@ static void statement(void) {
         begin_scope();
         block();
         end_scope();
+    }
+    else if (match(TOKEN_BREAK)) {
+        break_statement();
+    }
+    else if (match(TOKEN_CONTINUE)) {
+        continue_statement();
     }
     else {
         expression_statement();
