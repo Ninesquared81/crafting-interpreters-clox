@@ -183,6 +183,20 @@ static void emit_constant(Value value) {
     emit_varint_instruction(constant ^ (op_code << 24));
 }
 
+static void emit_popn(uint32_t pop_count) {
+    if (pop_count == 0) {
+        return;
+    }
+    if (pop_count == 1) {
+        emit_byte(OP_POP);
+        return;
+    }
+    
+    uint8_t op_code = (pop_count <= UINT8_MAX) ? OP_POPN : OP_POPN_LONG;
+    emit_varint_instruction(pop_count ^ (op_code << 24));
+}    
+
+
 static void patch_jump(int offset) {
     // -2 to adjust for the bytecode for the jump offset itself.
     int jump = current_chunk()->count - offset - 2;
@@ -216,6 +230,14 @@ static void finish_loop(Loop loop, int loop_start) {
     for (int *jump = loop.continues.offsets; jump < loop.continues.offsets + loop.continues.count; ++jump) {
         patch_loop(*jump, loop_start);
     }
+}
+
+static void pop_locals(int target_depth) {
+    uint32_t pop_count = 0;
+    for (int i = current->local_count; i > 0 && current->locals[i - 1].depth > target_depth; --i) {
+        ++pop_count;
+    }
+    emit_popn(pop_count);
 }
 
 static void init_compiler(Compiler *compiler) {
@@ -261,16 +283,7 @@ static void end_scope(void) {
         current->local_count--;
     }
 
-    if (pop_count == 1) {
-        emit_byte(OP_POP);
-        return;
-    }
-    else if (pop_count == 0) {
-        return;
-    }
-    
-    uint8_t op_code = (pop_count <= UINT8_MAX) ? OP_POPN : OP_POPN_LONG;
-    emit_varint_instruction(pop_count ^ (op_code << 24));
+    emit_popn(pop_count);
 }
 
 static void expression(void);
@@ -599,6 +612,9 @@ static void var_declaration(bool is_mutable) {
 }
 
 static void break_statement(void) {
+    // End all nested scoped before jumping.
+    pop_locals(peek_scope_depth(&current->loops));
+
     int jump = emit_jump(OP_JUMP);
     // Jump is patched by containing loop.
 
@@ -610,6 +626,9 @@ static void break_statement(void) {
 }
 
 static void continue_statement(void) {
+    // End all nested scopes before jumping.
+    pop_locals(peek_scope_depth(&current->loops));
+
     int jump = emit_jump(OP_LOOP);  // Needs to be patched by containing loop.
 
     if (!push_continue(&current->loops, jump)) {
@@ -626,8 +645,8 @@ static void expression_statement(void) {
 }
 
 static void for_statement(void) {
-    push_loop_stack(&current->loops, NEW_LOOP);
     begin_scope();
+    push_loop_stack(&current->loops, NEW_LOOP(current->scope_depth));
 
     consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
     if (match(TOKEN_SEMICOLON)) {
@@ -674,10 +693,10 @@ static void for_statement(void) {
         emit_byte(OP_POP);
     }
 
-    end_scope();
-    
     Loop loop = pop_loop_stack(&current->loops);
     finish_loop(loop, loop_start);
+
+    end_scope();
 }
 
 static void if_statement(void) {
@@ -705,7 +724,7 @@ static void print_statement(void) {
 }
 
 static void while_statement(void) {
-    push_loop_stack(&current->loops, NEW_LOOP);
+    push_loop_stack(&current->loops, NEW_LOOP(current->scope_depth));
     
     int loop_start = current_chunk()->count;
     consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");

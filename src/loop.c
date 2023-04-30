@@ -60,3 +60,7 @@ bool push_continue(LoopStack *stack, int offset) {
     push_jump_array(&stack->top[-1].continues, offset);
     return true;
 }
+
+int peek_scope_depth(LoopStack *stack) {
+    return stack->top[-1].scope_depth;
+}

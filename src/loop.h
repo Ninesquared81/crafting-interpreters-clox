@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 #define NEW_JUMP_ARRAY ((JumpArray){.offsets = NULL, .count = 0, .capacity = 0})
-#define NEW_LOOP ((Loop){.continues = NEW_JUMP_ARRAY, .breaks = NEW_JUMP_ARRAY})
+#define NEW_LOOP(depth) ((Loop){.continues = NEW_JUMP_ARRAY, .breaks = NEW_JUMP_ARRAY, .scope_depth = depth})
 
 typedef struct {
     int *offsets;
@@ -15,6 +15,7 @@ typedef struct {
 typedef struct {
     JumpArray breaks;
     JumpArray continues;
+    int scope_depth;
 } Loop;
 
 typedef struct {
@@ -22,8 +23,6 @@ typedef struct {
     Loop *top;
     size_t capacity;
 } LoopStack;
-
-Loop new_loop(void);
 
 void init_jump_array(JumpArray *array);
 void free_jump_array(JumpArray *array);
@@ -36,5 +35,6 @@ Loop pop_loop_stack(LoopStack *stack);
 
 bool push_break(LoopStack *stack, int offset);
 bool push_continue(LoopStack *stack, int offset);
+int peek_scope_depth(LoopStack *stack);
 
 #endif
