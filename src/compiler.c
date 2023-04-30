@@ -207,6 +207,17 @@ static void patch_loop(int offset, int loop_start) {
     current_chunk()->code[offset + 1] = jump & 0xff;
 }
 
+static void finish_loop(Loop loop, int loop_start) {
+    // Loop through each break statement inside loop and patch them.
+    for (int *jump = loop.breaks.offsets; jump < loop.breaks.offsets + loop.breaks.count; ++jump) {
+        patch_jump(*jump);
+    }
+    // Loop through each continue statement inside loop and patch them.
+    for (int *jump = loop.continues.offsets; jump < loop.continues.offsets + loop.continues.count; ++jump) {
+        patch_loop(*jump, loop_start);
+    }
+}
+
 static void init_compiler(Compiler *compiler) {
     compiler->locals = NULL;
     compiler->local_count = 0;
@@ -664,7 +675,9 @@ static void for_statement(void) {
     }
 
     end_scope();
-    pop_loop_stack(&current->loops);
+    
+    Loop loop = pop_loop_stack(&current->loops);
+    finish_loop(loop, loop_start);
 }
 
 static void if_statement(void) {
@@ -708,14 +721,7 @@ static void while_statement(void) {
     emit_byte(OP_POP);
     
     Loop loop = pop_loop_stack(&current->loops);
-    // Loop through each break statement inside loop and patch them.
-    for (int *jump = loop.breaks.offsets; jump < loop.breaks.offsets + loop.breaks.count; ++jump) {
-        patch_jump(*jump);
-    }
-    // Loop through each continue statement inside loop and patch them.
-    for (int *jump = loop.continues.offsets; jump < loop.continues.offsets + loop.continues.count; ++jump) {
-        patch_loop(*jump, loop_start);
-    }
+    finish_loop(loop, loop_start);
 }
 
 static void synchronize(void) {
