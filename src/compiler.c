@@ -138,7 +138,7 @@ static void emit_loop(int loop_start) {
     emit_byte(offset & 0xff);
 }
 
-static void emit_jump(uint8_t instruction) {
+static int emit_jump(uint8_t instruction) {
     emit_byte(instruction);
     emit_byte(0xff);
     emit_byte(0xff);
@@ -310,6 +310,41 @@ static void declare_variable(bool is_mutable) {
     add_local(*name, is_mutable);
 }
 
+static uint32_t parse_variable(const char *error_message, bool is_mutable) {
+    consume(TOKEN_IDENTIFIER, error_message);
+
+    declare_variable(is_mutable);
+    if (current->scope_depth > 0) return 0;
+    
+    return identifier_constant(&parser.previous);
+}
+
+static void mark_initialized(void) {
+    current->locals[current->local_count - 1].depth = current->scope_depth;
+}
+
+static void define_variable(uint32_t global, bool is_mutable) {
+    if (current->scope_depth > 0) {
+        mark_initialized();
+        return;
+    }
+    
+    uint8_t opcode = (global >> 24 == OP_CONSTANT) ? OP_DEFINE_GLOBAL : OP_DEFINE_GLOBAL_LONG;
+    emit_varint_instruction(global ^ (opcode << 24));
+    emit_byte(is_mutable);
+}
+
+static void and(bool can_assign) {
+    (void)can_assign;
+
+    int end_jump = emit_jump(OP_JUMP_IF_FALSE);
+
+    emit_byte(OP_POP);
+    parse_precedence(PREC_AND);
+
+    patch_jump(end_jump);
+}
+
 static void binary(bool can_assign) {
     (void)can_assign;
     TokenType operator_type = parser.previous.type;
@@ -333,10 +368,16 @@ static void binary(bool can_assign) {
 static void conditional(bool can_assign) {
     (void)can_assign;
     // condition is at top of stack
-    // jumps go here
+    int then_jump = emit_jump(OP_JUMP_IF_FALSE);
+    emit_byte(OP_POP);
     expression();  // true-case value (i.e. between '?' and ':').
+    int else_jump = emit_jump(OP_JUMP);
+    patch_jump(then_jump);
+
+    emit_byte(OP_POP);
     consume(TOKEN_COLON, "Expect ':' after expression.");
     parse_precedence(PREC_CONDITIONAL);  // false-case value (i.e. after ':').
+    patch_jump(else_jump);
 }
 
 static void literal(bool can_assign) {
@@ -495,41 +536,6 @@ static void parse_precedence(Precedence precedence) {
     }
 }
 
-static uint32_t parse_variable(const char *error_message, bool is_mutable) {
-    consume(TOKEN_IDENTIFIER, error_message);
-
-    declare_variable(is_mutable);
-    if (current->scope_depth > 0) return 0;
-    
-    return identifier_constant(&parser.previous);
-}
-
-static void mark_initialized(void) {
-    current->locals[current->local_count - 1].depth = current->scope_depth;
-}
-
-static void define_variable(uint32_t global, bool is_mutable) {
-    if (current->scope_depth > 0) {
-        mark_initialized();
-        return;
-    }
-    
-    uint8_t opcode = (global >> 24 == OP_CONSTANT) ? OP_DEFINE_GLOBAL : OP_DEFINE_GLOBAL_LONG;
-    emit_varint_instruction(global ^ (opcode << 24));
-    emit_byte(is_mutable);
-}
-
-static void and(bool can_assign) {
-    (void)can_assign;
-
-    int end_jump = emit_jump(OP_JUMP_IF_FALSE);
-
-    emit_byte(OP_POP);
-    parse_precedence(PREC_AND);
-
-    patch_jump(end_jump);
-}
-
 static ParseRule *get_rule(TokenType type) {
     return &rules[type];
 }
@@ -600,7 +606,7 @@ static void for_statement(void) {
 
     if (!match(TOKEN_RIGHT_PAREN)) {
         int body_jump = emit_jump(OP_JUMP);
-        it increment_start = current_chunk()->count;
+        int increment_start = current_chunk()->count;
         expression();
         emit_byte(OP_POP);
         consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
