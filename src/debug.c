@@ -74,7 +74,7 @@ static int byte_long_instruction(const char *name, Chunk *chunk, int offset) {
 static int jump_instruction(const char *name, int sign, Chunk *chunk, int offset) {
     uint16_t jump = (uint16_t)(chunk->code[offset + 1] << 8);
     jump |= chunk->code[offset + 2];
-    print("%-16s %4d -> %d\n", name, offset, offset + 3 + sign * jump);
+    printf("%-16s %4d -> %d\n", name, offset, offset + 3 + sign * jump);
     return offset + 3;
 }
 
