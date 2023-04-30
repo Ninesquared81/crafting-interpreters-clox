@@ -1,0 +1,8 @@
+for (var i = 0; i < 5; i = i + 1) {
+    for (var j = 0; j < 5; j = j + 1) {
+        if (i * j == 6) break;
+        print "i = " + i + ", j = " + j;
+    }
+    if (i == 3) continue;
+    print "Hello";
+}
