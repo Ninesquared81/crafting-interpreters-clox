@@ -2,3 +2,11 @@ while (true) {
     print "Hello";
     break;
 }
+
+for (var i = 0; i < 7; i = i + 1) {
+    print i;
+    if (i == 5) {
+        print "Don't like 5 :c";
+        break;
+    }
+}
