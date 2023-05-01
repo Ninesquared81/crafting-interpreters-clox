@@ -34,7 +34,7 @@ void free_loop_stack(LoopStack *stack) {
 }
 
 void push_loop_stack(LoopStack *stack, Loop loop) {
-    if (stack->top == stack->start + stack->capacity) {
+    if (stack->top == NULL || stack->top == stack->start + stack->capacity) {
         size_t old_capacity = stack->capacity;
         stack->capacity = GROW_CAPACITY(old_capacity);
         stack->start = GROW_ARRAY(Loop, stack->start, old_capacity, stack->capacity);
