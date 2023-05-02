@@ -161,13 +161,14 @@ static void concatenate(void) {
 
 static InterpretResult run () {
     CallFrame *frame = &vm.frames[vm.frame_count - 1];
-
-#define READ_BYTE() (*frame->ip++)
-#define READ_BYTES() (frame->ip += 3, (uint32_t)( \
-                      (frame->ip[-3] << 16) ^     \
-                      (frame->ip[-2] << 8)  ^     \
-                      (frame->ip[-1]     )))
-#define READ_SHORT() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
+    register uint8_t *ip = frame->ip;
+    
+#define READ_BYTE() (*ip++)
+#define READ_BYTES() (ip += 3, (uint32_t)( \
+                      (ip[-3] << 16) ^     \
+                      (ip[-2] << 8)  ^     \
+                      (ip[-1]     )))
+#define READ_SHORT() (ip += 2, (uint16_t)((ip[-2] << 8) | ip[-1]))
 #define READ_CONSTANT() (frame->function->chunk.constants.values[READ_BYTE()])
 #define READ_CONSTANT_LONG() (frame->function->chunk.constants.values[READ_BYTES()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
@@ -193,7 +194,7 @@ static InterpretResult run () {
             printf(" ]");
         }
         printf("\n");
-        disassemble_instruction(&frame->function->chunk, (int)(frame->ip - frame->function->chunk.code));
+        disassemble_instruction(&frame->function->chunk, (int)(ip - frame->function->chunk.code));
 #endif
         uint8_t instruction;
         switch (instruction = READ_BYTE()) {
@@ -365,21 +366,22 @@ static InterpretResult run () {
         }
         case OP_JUMP: {
             uint16_t offset = READ_SHORT();
-            frame->ip += offset;
+            ip += offset;
             break;
         }
         case OP_JUMP_IF_FALSE: {
             uint16_t offset = READ_SHORT();
-            if (is_falsey(peek(0))) frame->ip += offset;
+            if (is_falsey(peek(0))) ip += offset;
             break;
         }
         case OP_LOOP: {
             uint16_t offset = READ_SHORT();
-            frame->ip -= offset;
+            ip -= offset;
             break;
         }
         case OP_CALL: {
             int arg_count = READ_BYTE();
+            frame->ip = ip;
             if (!call_value(peek(arg_count), arg_count)) {
                 return INTERPRET_RUNTIME_ERROR;
             }
@@ -387,6 +389,7 @@ static InterpretResult run () {
         }
         case OP_CALL_LONG: {
             int arg_count = READ_BYTES();
+            frame->ip = ip;
             if (!call_value(peek(arg_count), arg_count)) {
                 return INTERPRET_RUNTIME_ERROR;
             }
@@ -403,6 +406,7 @@ static InterpretResult run () {
             vm.stack_top = frame->slots;
             push(result);
             frame = &vm.frames[vm.frame_count - 1];
+            ip = frame->ip;
             break;
         }
         }
