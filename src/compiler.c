@@ -49,7 +49,16 @@ typedef struct {
     bool is_mutable;
 } Local;
 
-typedef struct {
+typedef enum {
+    TYPE_FUNCTION,
+    TYPE_SCRIPT,
+} FunctionType;
+
+typedef struct Compiler {
+    struct Compiler *enclosing;
+    ObjFunction *function;
+    FunctionType type;
+
     Local *locals;
     uint32_t local_count;
     uint32_t local_capacity;
@@ -59,10 +68,9 @@ typedef struct {
 
 Parser parser;
 Compiler *current = NULL;
-Chunk *compiling_chunk;
 
 static Chunk *current_chunk(void) {
-    return compiling_chunk;
+    return &current->function->chunk;
 }
 
 static void error_at(Token *token, const char *message) {
@@ -148,6 +156,7 @@ static int emit_jump(uint8_t instruction) {
 }
 
 static void emit_return(void) {
+    emit_byte(OP_NIL);
     emit_byte(OP_RETURN);
 }
 
@@ -162,25 +171,23 @@ static uint32_t make_constant(Value value) {
     return constant;
 }
 
-static void emit_varint_instruction(uint32_t bytes) {
-    uint8_t instruction = bytes >> 24;
-
+static void emit_varint_instruction(uint8_t instruction, uint32_t operand) {
     // Emit opcode.
     emit_byte(instruction);
     if (IS_LONG_INSTRUCTION(instruction)) {
         // Emit two leading bytes of index.
-        emit_bytes(bytes >> 16, bytes >> 8);
+        emit_bytes(operand >> 16, operand >> 8);
     }
     // Emit final byte.
-    emit_byte((uint8_t)bytes);
+    emit_byte((uint8_t)operand);
 }
     
 
 static void emit_constant(Value value) {
     uint32_t constant = make_constant(value);
-    uint8_t op_code = (constant <= UINT8_MAX) ? OP_CONSTANT : OP_CONSTANT_LONG;
+    uint8_t instruction = (constant <= UINT8_MAX) ? OP_CONSTANT : OP_CONSTANT_LONG;
 
-    emit_varint_instruction(constant ^ (op_code << 24));
+    emit_varint_instruction(instruction, constant);
 }
 
 static void emit_popn(uint32_t pop_count) {
@@ -192,8 +199,8 @@ static void emit_popn(uint32_t pop_count) {
         return;
     }
     
-    uint8_t op_code = (pop_count <= UINT8_MAX) ? OP_POPN : OP_POPN_LONG;
-    emit_varint_instruction(pop_count ^ (op_code << 24));
+    uint8_t instruction = (pop_count <= UINT8_MAX) ? OP_POPN : OP_POPN_LONG;
+    emit_varint_instruction(instruction, pop_count);
 }    
 
 
@@ -240,13 +247,26 @@ static void pop_locals(int target_depth) {
     emit_popn(pop_count);
 }
 
-static void init_compiler(Compiler *compiler) {
+static void init_compiler(Compiler *compiler, FunctionType type) {
+    compiler->enclosing = current;
+    compiler->function = NULL;
+    compiler->type = type;
     compiler->locals = NULL;
     compiler->local_count = 0;
-    compiler->local_capacity = 0;
+    compiler->local_capacity = GROW_CAPACITY(0);
+    compiler->locals = ALLOCATE(Local, compiler->local_capacity);
     compiler->scope_depth = 0;
+    compiler->function = new_function();
     init_loop_stack(&compiler->loops);
     current = compiler;
+    if (type != TYPE_SCRIPT) {
+        current->function->name = copy_string(parser.previous.start, parser.previous.length);
+    }
+    
+    Local *local = &current->locals[current->local_count++];
+    local->depth = 0;
+    local->name.start = "";
+    local->name.length = 0;
 }
 
 static void free_compiler(Compiler *compiler) {
@@ -258,15 +278,21 @@ static void free_compiler(Compiler *compiler) {
     free_loop_stack(&compiler->loops);
 }
 
-static void end_compiler(void) {
+static ObjFunction *end_compiler(void) {
     emit_return();
+    ObjFunction *function = current->function;
+
     free_compiler(current);
     
 #ifdef DEBUG_PRINT_CODE
     if (!parser.had_error) {
-        disassemble_chunk(current_chunk(), "code");
+        disassemble_chunk(current_chunk(), (function->name != NULL)
+                          ? function->name->chars : "<script>");
     }
 #endif
+
+    current = current->enclosing;
+    return function;
 }
 
 static void begin_scope(void) {
@@ -360,6 +386,7 @@ static uint32_t parse_variable(const char *error_message, bool is_mutable) {
 }
 
 static void mark_initialized(void) {
+    if (current->scope_depth == 0) return;
     current->locals[current->local_count - 1].depth = current->scope_depth;
 }
 
@@ -369,9 +396,24 @@ static void define_variable(uint32_t global, bool is_mutable) {
         return;
     }
     
-    uint8_t opcode = (global >> 24 == OP_CONSTANT) ? OP_DEFINE_GLOBAL : OP_DEFINE_GLOBAL_LONG;
-    emit_varint_instruction(global ^ (opcode << 24));
+    uint8_t instruction = (global <= UINT8_MAX) ? OP_DEFINE_GLOBAL : OP_DEFINE_GLOBAL_LONG;
+    emit_varint_instruction(instruction, global);
     emit_byte(is_mutable);
+}
+
+static uint32_t argument_list(void) {
+    uint32_t arg_count = 0;
+    if (!check(TOKEN_RIGHT_PAREN)) {
+        do {
+            expression();
+            if (arg_count == UINT24_MAX) {
+                error("Too many arguments in function call");
+            }
+            arg_count++;
+        } while (match(TOKEN_COMMA));
+    }
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
+    return arg_count;
 }
 
 static void and(bool can_assign) {
@@ -403,6 +445,13 @@ static void binary(bool can_assign) {
     case TOKEN_SLASH:         emit_byte(OP_DIVIDE); break;
     default: return;  // Unreachable.
     }
+}
+
+static void call(bool can_assign) {
+    (void)can_assign;
+    uint32_t arg_count = argument_list();
+    uint8_t instruction = (arg_count <= UINT8_MAX) ? OP_CALL : OP_CALL_LONG;
+    emit_varint_instruction(instruction, arg_count);
 }
 
 static void conditional(bool can_assign) {
@@ -482,10 +531,10 @@ static void named_variable(Token name, bool can_assign) {
             error("Cannot assign to a val variable.");
         }
         expression();
-        emit_varint_instruction(arg ^ (set_op << 24));
+        emit_varint_instruction(set_op, arg);
     }
     else {
-        emit_varint_instruction(arg ^ (get_op << 24));
+        emit_varint_instruction(get_op, arg);
     }
 }
 
@@ -509,7 +558,7 @@ static void unary(bool can_assign) {
 }
 
 ParseRule rules[] = {
-    [TOKEN_LEFT_PAREN]    = {grouping,   NULL,        PREC_NONE},
+    [TOKEN_LEFT_PAREN]    = {grouping,   call,        PREC_CALL},
     [TOKEN_RIGHT_PAREN]   = {NULL,       NULL,        PREC_NONE},
     [TOKEN_LEFT_BRACE]    = {NULL,       NULL,        PREC_NONE},
     [TOKEN_RIGHT_BRACE]   = {NULL,       NULL,        PREC_NONE},
@@ -592,6 +641,37 @@ static void block(void) {
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
+static void function(FunctionType type) {
+    Compiler compiler;
+    init_compiler(&compiler, type);
+    begin_scope();
+
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
+    if (!check(TOKEN_RIGHT_PAREN)) {
+        do {
+            current->function->arity++;
+            if (current->function->arity > 255) {
+                error_at_current("Can't have more than 255 parameters.");
+            }
+            uint32_t constant = parse_variable("Expect parameter name.", true);
+            define_variable(constant, true);
+        } while (match(TOKEN_COMMA));
+    }
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
+    consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
+    block();
+
+    ObjFunction *function = end_compiler();
+    emit_bytes(OP_CONSTANT, make_constant(OBJ_VAL(function)));
+}
+
+static void fun_declaration(void) {
+    uint32_t global = parse_variable("Expect function name.", false);
+    mark_initialized();
+    function(TYPE_FUNCTION);
+    define_variable(global, false);
+}
+
 static void var_declaration(bool is_mutable) {
     uint32_t global = parse_variable("Expect variable name.", is_mutable);
 
@@ -604,6 +684,7 @@ static void var_declaration(bool is_mutable) {
         }
         else {
             error("Val declaration must have an initializer.");
+            return;
         }
     }
     consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
@@ -612,28 +693,34 @@ static void var_declaration(bool is_mutable) {
 }
 
 static void break_statement(void) {
+    if (IS_LOOP_STACK_EMPTY(current->loops)) {
+        error("Cannot have 'break' outside of loop.");
+        return;
+    }
+    
     // End all nested scoped before jumping.
     pop_locals(peek_scope_depth(&current->loops));
 
     int jump = emit_jump(OP_JUMP);
     // Jump is patched by containing loop.
 
-    if (!push_break(&current->loops, jump)) {
-        error("Cannot have 'break' outside of loop.");
-    }
+    push_break(&current->loops, jump);
 
     consume(TOKEN_SEMICOLON, "Expect ';' after 'break'.");
 }
 
 static void continue_statement(void) {
+    if (IS_LOOP_STACK_EMPTY(current->loops)) {
+        error("Cannot have 'continue' outside of loop.");
+        return;
+    }
+
     // End all nested scopes before jumping.
     pop_locals(peek_scope_depth(&current->loops));
 
     int jump = emit_jump(OP_LOOP);  // Needs to be patched by containing loop.
 
-    if (!push_continue(&current->loops, jump)) {
-        error("Cannot have 'continue' outside of loop.");
-    }
+    push_continue(&current->loops, jump);
 
     consume(TOKEN_SEMICOLON, "Expect ';' after 'continue'.");
 }
@@ -723,6 +810,21 @@ static void print_statement(void) {
     emit_byte(OP_PRINT);
 }
 
+static void return_statement(void) {
+    if (current->type == TYPE_SCRIPT) {
+        error("Can't return from top-level code.");
+    }
+
+    if (match(TOKEN_SEMICOLON)) {
+        emit_return();
+    }
+    else {
+        expression();
+        consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
+        emit_byte(OP_RETURN);
+    }
+}
+
 static void while_statement(void) {
     push_loop_stack(&current->loops, NEW_LOOP(current->scope_depth));
     
@@ -769,7 +871,10 @@ static void synchronize(void) {
 }
 
 static void declaration(void) {
-    if (match(TOKEN_VAR)) {
+    if (match(TOKEN_FUN)) {
+        fun_declaration();
+    }
+    else if (match(TOKEN_VAR)) {
         var_declaration(true);
     }
     else if (match(TOKEN_VAL)) {
@@ -792,6 +897,9 @@ static void statement(void) {
     else if (match(TOKEN_IF)) {
         if_statement();
     }
+    else if (match(TOKEN_RETURN)) {
+        return_statement();
+    }
     else if (match(TOKEN_WHILE)) {
         while_statement();
     }
@@ -811,11 +919,10 @@ static void statement(void) {
     }
 }
 
-bool compile(const char *source, Chunk *chunk) {
+ObjFunction *compile(const char *source) {
     init_scanner(source);
     Compiler compiler;
-    init_compiler(&compiler);
-    compiling_chunk = chunk;
+    init_compiler(&compiler, TYPE_SCRIPT);
 
     parser.had_error = false;
     parser.panic_mode = false;
@@ -826,6 +933,6 @@ bool compile(const char *source, Chunk *chunk) {
         declaration();
     }
     
-    end_compiler();
-    return !parser.had_error;
+    ObjFunction *function = end_compiler();
+    return (parser.had_error) ? NULL : function;
 }

@@ -6,6 +6,8 @@
 #define NEW_JUMP_ARRAY ((JumpArray){.offsets = NULL, .count = 0, .capacity = 0})
 #define NEW_LOOP(depth) ((Loop){.continues = NEW_JUMP_ARRAY, .breaks = NEW_JUMP_ARRAY, .scope_depth = depth})
 
+#define IS_LOOP_STACK_EMPTY(stack) ((stack).top == (stack).start)
+
 typedef struct {
     int *offsets;
     size_t count;
