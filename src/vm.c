@@ -12,9 +12,10 @@
 
 VM vm;
 
-static Value clock_native(int arg_count, Value *args) {
+static bool clock_native(int arg_count, Value *args, Value *result) {
     (void)arg_count; (void)args;
-    return NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+    *result = NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+    return true;
 }
 
 static void reset_stack(void) {
@@ -145,7 +146,10 @@ static bool call_value(Value callee, int arg_count) {
                 runtime_error("Expected %d arguments but got %d.", native->arity, arg_count);
                 return false;
             }
-            Value result = native->function(arg_count, vm.stack_top - arg_count);
+            Value result;
+            if (!native->function(arg_count, vm.stack_top - arg_count, &result)) {
+                return false;
+            }
             vm.stack_top -= arg_count + 1;
             push(result);
             return true;
