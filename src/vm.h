@@ -9,6 +9,7 @@
 
 #define FRAMES_MAX 64
 //#define STACK_MAX (FRAMES_MAX * UINT8_COUNT)
+#define STACK_SIZE_INIT (FRAMES_MAX * UINT8_COUNT)
 
 typedef struct {
     ObjFunction *function;
