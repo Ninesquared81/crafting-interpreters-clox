@@ -87,6 +87,12 @@ void push(Value value) {
         vm.stack_capacity = GROW_CAPACITY(old_capacity);
         vm.stack = GROW_ARRAY(Value, vm.stack, old_capacity, vm.stack_capacity);
         vm.stack_top = vm.stack + old_capacity;
+
+        // Make sure slots pointers point into the new allocation.
+        // Note: We have to save the offset and use it here, since at this point the slots pointer is invalid.
+        for (CallFrame *frame = vm.frames; frame < vm.frames + vm.frame_count; ++frame) {
+            frame->slots = vm.stack + frame->slots_offset;
+        }
     }
     *vm.stack_top++ = value;
 }
@@ -119,6 +125,7 @@ static bool call(ObjFunction *function, int arg_count) {
     frame->function = function;
     frame->ip = function->chunk.code;
     frame->slots = vm.stack_top - arg_count - 1;
+    frame->slots_offset = frame->slots - vm.stack;
     return true;
 }
 
@@ -383,6 +390,7 @@ static InterpretResult run () {
             if (!call_value(peek(arg_count), arg_count)) {
                 return INTERPRET_RUNTIME_ERROR;
             }
+            frame = &vm.frames[vm.frame_count - 1];
             break;
         }
         case OP_CALL_LONG: {
@@ -390,6 +398,7 @@ static InterpretResult run () {
             if (!call_value(peek(arg_count), arg_count)) {
                 return INTERPRET_RUNTIME_ERROR;
             }
+            frame = &vm.frames[vm.frame_count - 1];
             break;
         }
         case OP_RETURN: {

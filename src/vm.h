@@ -1,6 +1,7 @@
 #ifndef CLOX_VM_H
 #define CLOX_VM_H
 
+#include "common.h"
 #include "object.h"
 #include "set.h"
 #include "table.h"
@@ -13,6 +14,7 @@ typedef struct {
     ObjFunction *function;
     uint8_t *ip;
     Value *slots;
+    ptrdiff_t slots_offset;
 } CallFrame;
 
 typedef struct {
