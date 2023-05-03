@@ -17,7 +17,7 @@ clean:
 rebuild: clean
 	$(MAKE) all
 
-bin/%.o : src/%.c src/%.h
+bin/%.o : src/%.c
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 
 $(objects) : | bin
