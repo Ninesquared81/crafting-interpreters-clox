@@ -22,6 +22,11 @@ static void reset_stack(void) {
     vm.frame_count = 0;
 }
 
+static void init_stack(void) {
+    vm.stack = ALLOCATE(Value, STACK_SIZE_INIT);
+    reset_stack();
+}
+
 static void free_stack(void) {
     FREE_ARRAY(Value, vm.stack, vm.stack_capacity);
     vm.stack = NULL;
@@ -62,7 +67,7 @@ static void define_native(const char *name, NativeFn function) {
 }
 
 void init_vm(void) {
-    reset_stack();
+    init_stack();
     vm.objects = NULL;
 
     init_table(&vm.globals);
@@ -393,6 +398,7 @@ static InterpretResult run () {
                 return INTERPRET_RUNTIME_ERROR;
             }
             frame = &vm.frames[vm.frame_count - 1];
+            ip = frame->ip;
             break;
         }
         case OP_CALL_LONG: {
@@ -402,6 +408,7 @@ static InterpretResult run () {
                 return INTERPRET_RUNTIME_ERROR;
             }
             frame = &vm.frames[vm.frame_count - 1];
+            ip = frame->ip;
             break;
         }
         case OP_RETURN: {
