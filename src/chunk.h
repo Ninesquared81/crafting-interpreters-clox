@@ -12,7 +12,8 @@
         (opcode) == OP_DEFINE_GLOBAL_LONG ||                            \
         (opcode) == OP_SET_GLOBAL_LONG    ||                            \
         (opcode) == OP_SET_LOCAL_LONG     ||                            \
-        (opcode) == OP_POPN_LONG                                        \
+        (opcode) == OP_POPN_LONG          ||                            \
+        (opcode) == OP_CALL_LONG                                        \
         )
 
 typedef enum {
