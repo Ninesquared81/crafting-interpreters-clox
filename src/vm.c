@@ -58,9 +58,9 @@ static void runtime_error(const char *format, ...) {
     reset_stack();
 }
 
-static void define_native(const char *name, NativeFn function) {
+static void define_native(const char *name, NativeFn function, int arity) {
     push(OBJ_VAL(copy_string(name, (int)strlen(name))));
-    push(OBJ_VAL(new_native(function)));
+    push(OBJ_VAL(new_native(function, arity)));
     table_set(&vm.globals, STRING_KEY(AS_STRING(vm.stack[0])), vm.stack[1]);
     pop();
     pop();
@@ -74,7 +74,7 @@ void init_vm(void) {
     init_table(&vm.strings);
     init_set(&vm.immutable_globals);
 
-    define_native("clock", clock_native);
+    define_native("clock", clock_native, 0);
 }
 
 void free_vm(void) {
@@ -140,8 +140,12 @@ static bool call_value(Value callee, int arg_count) {
         case OBJ_FUNCTION:
             return call(AS_FUNCTION(callee), arg_count);
         case OBJ_NATIVE: {
-            NativeFn native = AS_NATIVE(callee);
-            Value result = native(arg_count, vm.stack_top - arg_count);
+            ObjNative *native = AS_NATIVE(callee);
+            if (arg_count != native->arity) {
+                runtime_error("Expected %d arguments but got %d.", native->arity, arg_count);
+                return false;
+            }
+            Value result = native->function(arg_count, vm.stack_top - arg_count);
             vm.stack_top -= arg_count + 1;
             push(result);
             return true;
@@ -150,7 +154,7 @@ static bool call_value(Value callee, int arg_count) {
             break;  // Non-callable object type.
         }
     }
-    runtime_error("Can only call functins and classes.");
+    runtime_error("Can only call functions and classes.");
     return false;
 }
 
