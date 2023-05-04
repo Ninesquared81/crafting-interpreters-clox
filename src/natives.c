@@ -35,7 +35,12 @@ static bool rand_native(ulong arg_count, Value *args, Value *result) {
 
 static bool seedrn_native(ulong arg_count, Value *args, Value *result) {
     (void)arg_count;
-    rand_seed = (uint64_t)AS_NUMBER(*args);
+    Value seed = *args;
+    if (!IS_NUMBER(seed)) {
+        runtime_error("Argument to seedrn() must be a number.");
+        return false;
+    }
+    rand_seed = (uint64_t)AS_NUMBER(seed);
     *result = NIL_VAL;
     return true;
 }
