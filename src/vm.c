@@ -8,15 +8,10 @@
 #include "debug.h"
 #include "object.h"
 #include "memory.h"
+#include "natives.h"
 #include "vm.h"
 
 VM vm;
-
-static bool clock_native(int arg_count, Value *args, Value *result) {
-    (void)arg_count; (void)args;
-    *result = NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
-    return true;
-}
 
 static void reset_stack(void) {
     vm.stack_top = vm.stack;
@@ -35,7 +30,7 @@ static void free_stack(void) {
     reset_stack();
 }
 
-static void runtime_error(const char *format, ...) {
+void runtime_error(const char *format, ...) {
     va_list args;
     va_start(args, format);
     vfprintf(stderr, format, args);
@@ -59,7 +54,7 @@ static void runtime_error(const char *format, ...) {
     reset_stack();
 }
 
-static void define_native(const char *name, NativeFn function, int arity) {
+static void define_native(const char *name, ulong arity, NativeFn function) {
     push(OBJ_VAL(copy_string(name, (int)strlen(name))));
     push(OBJ_VAL(new_native(function, arity)));
     table_set(&vm.globals, STRING_KEY(AS_STRING(vm.stack[0])), vm.stack[1]);
@@ -75,7 +70,9 @@ void init_vm(void) {
     init_table(&vm.strings);
     init_set(&vm.immutable_globals);
 
-    define_native("clock", clock_native, 0);
+    for (int i = 0; i < NATIVE_COUNT; ++i) {
+        define_native(natives[i].name, natives[i].arity, natives[i].function);
+    }
 }
 
 void free_vm(void) {
@@ -116,9 +113,9 @@ static Value peek(int distance) {
     return vm.stack_top[-1 - distance];
 }
 
-static bool call(ObjFunction *function, int arg_count) {
+static bool call(ObjFunction *function, ulong arg_count) {
     if (arg_count != function->arity) {
-        runtime_error("Expected %d arguments but got %d.", function->arity, arg_count);
+        runtime_error("Expected %lu arguments but got %lu.", function->arity, arg_count);
         return false;
     }
 
@@ -135,7 +132,7 @@ static bool call(ObjFunction *function, int arg_count) {
     return true;
 }
 
-static bool call_value(Value callee, int arg_count) {
+static bool call_value(Value callee, ulong arg_count) {
     if (IS_OBJ(callee)) {
         switch (OBJ_TYPE(callee)) {
         case OBJ_FUNCTION:
@@ -143,7 +140,7 @@ static bool call_value(Value callee, int arg_count) {
         case OBJ_NATIVE: {
             ObjNative *native = AS_NATIVE(callee);
             if (arg_count != native->arity) {
-                runtime_error("Expected %d arguments but got %d.", native->arity, arg_count);
+                runtime_error("Expected %lu arguments but got %lu.", native->arity, arg_count);
                 return false;
             }
             Value result;
@@ -379,7 +376,7 @@ static InterpretResult run () {
         case OP_PRINT: {
             // TODO: This could be changed to a call to `to_string()` since we already defined it.
             // i.e.
-            // printf("%s\n", to_sting(pop()));
+            // printf("%s\n", to_string(pop()));
             print_value(pop());
             printf("\n");
             break;
@@ -400,7 +397,7 @@ static InterpretResult run () {
             break;
         }
         case OP_CALL: {
-            int arg_count = READ_BYTE();
+            ulong arg_count = READ_BYTE();
             frame->ip = ip;
             if (!call_value(peek(arg_count), arg_count)) {
                 return INTERPRET_RUNTIME_ERROR;
@@ -410,7 +407,7 @@ static InterpretResult run () {
             break;
         }
         case OP_CALL_LONG: {
-            int arg_count = READ_BYTES();
+            ulong arg_count = READ_BYTES();
             frame->ip = ip;
             if (!call_value(peek(arg_count), arg_count)) {
                 return INTERPRET_RUNTIME_ERROR;

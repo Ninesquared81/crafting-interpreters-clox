@@ -30,16 +30,16 @@ struct Obj {
 
 typedef struct {
     Obj obj;
-    int arity;
+    ulong arity;
     Chunk chunk;
     ObjString *name;
 } ObjFunction;
 
-typedef bool (*NativeFn)(int arg_count, Value *args, Value *result);
+typedef bool (*NativeFn)(ulong arg_count, Value *args, Value *result);
 
 typedef struct {
     Obj obj;
-    int arity;
+    ulong arity;
     NativeFn function;
 } ObjNative;
 
@@ -51,7 +51,7 @@ struct ObjString {
 };
 
 ObjFunction *new_function(void);
-ObjNative *new_native(NativeFn function, int arity);
+ObjNative *new_native(NativeFn function, ulong arity);
 ObjString *take_string(char *chars, int length);
 ObjString *copy_string(const char *chars, int length);
 ObjString *to_string(Value value);
