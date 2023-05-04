@@ -70,6 +70,7 @@ void init_vm(void) {
     init_table(&vm.strings);
     init_set(&vm.immutable_globals);
 
+    init_natives();  // Sets the seed for rand().
     for (int i = 0; i < NATIVE_COUNT; ++i) {
         define_native(natives[i].name, natives[i].arity, natives[i].function);
     }
