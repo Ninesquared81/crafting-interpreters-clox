@@ -16,7 +16,7 @@ static bool clock_native(ulong arg_count, Value *args, Value *result) {
 static uint64_t rand_seed;
 static uint64_t lox_rand(void) {
 #define LCG_m ((uint64_t)LOX_RAND_MAX)      // Large power of 2.
-#define LCG_a ((uint64_t)(UINT8_COUNT + 1))  // (a - 1) div. by all prime factors of m, (a - 1) div. by 4 (since m is).
+#define LCG_a ((uint64_t)(UINT24_COUNT + 1))  // (a - 1) div. by all prime factors of m, (a - 1) div. by 4 (since m is).
 #define LCG_c ((uint64_t)(3343 * 729))      // m and c are relatively prime (prime fact. 3^3 * 3343)
     
     // Use a linear congruential generator to get random numbers.
