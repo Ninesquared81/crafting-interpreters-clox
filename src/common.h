@@ -12,4 +12,6 @@
 #define UINT24_COUNT (UINT8_COUNT * UINT8_COUNT * UINT8_COUNT)
 #define UINT24_MAX (UINT24_COUNT - 1)
 
+typedef unsigned long ulong;
+
 #endif
