@@ -3,7 +3,7 @@
 
 #include "object.h"
 
-#define NATIVE_COUNT 2
+#define NATIVE_COUNT 3
 
 #define LOX_RAND_MAX (((uint64_t)UINT32_MAX + 1) * ((uint64_t)UINT16_MAX + 1))  // 2^48
 

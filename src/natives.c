@@ -33,9 +33,17 @@ static bool rand_native(ulong arg_count, Value *args, Value *result) {
     return true;
 }
 
+static bool seedrn_native(ulong arg_count, Value *args, Value *result) {
+    (void)arg_count;
+    rand_seed = (uint64_t)AS_NUMBER(*args);
+    *result = NIL_VAL;
+    return true;
+}
+
 NativeEntry natives[] = {
     {"clock", 0, clock_native},
     {"rand", 0, rand_native},
+    {"seedrn", 1, seedrn_native},
 };
 
 void init_natives(void) {
