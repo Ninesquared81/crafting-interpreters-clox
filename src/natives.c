@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -49,6 +50,17 @@ static bool seedrn_native(ulong arg_count, Value *args, Value *result) {
     return true;
 }
 
+static bool round_native(ulong arg_count, Value *args, Value *result) {
+    (void)arg_count;
+    Value number = args[0];
+    if (!IS_NUMBER(number)) {
+        runtime_error("Argument to round() must be a number.");
+        return false;
+    }
+    *result = NUMBER_VAL(round(AS_NUMBER(number)));
+    return true;
+}
+
 static bool gets_native(ulong arg_count, Value *args, Value *result) {
     (void)arg_count; (void)args;
     char buf[GETS_MAX];
@@ -82,6 +94,7 @@ NativeEntry natives[] = {
     {"gets", 0, gets_native},
     {"puts", 1, puts_native},
     {"rand", 0, rand_native},
+    {"round", 1, round_native},
     {"seedrn", 1, seedrn_native},
 };
 
