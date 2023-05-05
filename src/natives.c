@@ -67,7 +67,12 @@ static bool gets_native(ulong arg_count, Value *args, Value *result) {
 
 static bool puts_native(ulong arg_count, Value *args, Value *result) {
     (void)arg_count;
-    puts(AS_CSTRING(args[0]));
+    Value string = args[0];
+    if (!IS_STRING(string)) {
+        runtime_error("Argument to puts() must be a string.");
+        return false;
+    }
+    puts(AS_CSTRING(string));
     *result = NIL_VAL;
     return true;
 }
