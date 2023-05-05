@@ -17,7 +17,8 @@ clean:
 rebuild: clean
 	$(MAKE) all
 
-bin/%.o : src/%.c
+bin/vm.o : src/natives.h
+bin/%.o : src/%.c src/common.h
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 
 $(objects) : | bin
