@@ -1,11 +1,15 @@
 #include <assert.h>
+#include <stdio.h>
+#include <string.h>
 #include <time.h>
 
 #include "common.h"
 #include "natives.h"
+#include "object.h"
 #include "value.h"
 #include "vm.h"
 
+#define REAL_NATIVE_COUNT (sizeof natives / sizeof natives[0])
 
 static bool clock_native(ulong arg_count, Value *args, Value *result) {
     (void)arg_count; (void)args;
@@ -35,7 +39,7 @@ static bool rand_native(ulong arg_count, Value *args, Value *result) {
 
 static bool seedrn_native(ulong arg_count, Value *args, Value *result) {
     (void)arg_count;
-    Value seed = *args;
+    Value seed = args[0];
     if (!IS_NUMBER(seed)) {
         runtime_error("Argument to seedrn() must be a number.");
         return false;
@@ -45,8 +49,33 @@ static bool seedrn_native(ulong arg_count, Value *args, Value *result) {
     return true;
 }
 
+static bool gets_native(ulong arg_count, Value *args, Value *result) {
+    (void)arg_count; (void)args;
+    char buf[GETS_MAX];
+    if (fgets(buf, GETS_MAX, stdin) == NULL) {
+        runtime_error("Error reading from stdin.");
+        return false;
+    }
+    int length = strlen(buf);
+    if (buf[length - 1] == '\n') {
+        // Trim off trailing newline if present.
+        --length;
+    }
+    *result = OBJ_VAL(copy_string(buf, length));
+    return true;
+}
+
+static bool puts_native(ulong arg_count, Value *args, Value *result) {
+    (void)arg_count;
+    puts(AS_CSTRING(args[0]));
+    *result = NIL_VAL;
+    return true;
+}
+
 NativeEntry natives[] = {
     {"clock", 0, clock_native},
+    {"gets", 0, gets_native},
+    {"puts", 1, puts_native},
     {"rand", 0, rand_native},
     {"seedrn", 1, seedrn_native},
 };
@@ -55,4 +84,4 @@ void init_natives(void) {
     rand_seed = (uint64_t)time(NULL) & LOX_RAND_MAX;
 }
 
-static_assert(sizeof natives / sizeof *natives == NATIVE_COUNT);
+static_assert(REAL_NATIVE_COUNT == NATIVE_COUNT);
