@@ -1,5 +1,6 @@
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -10,6 +11,8 @@
 #include "memory.h"
 #include "natives.h"
 #include "vm.h"
+
+#define INPUT_MAX 1000
 
 VM vm;
 
@@ -160,6 +163,38 @@ static bool call_value(Value callee, ulong arg_count) {
     return false;
 }
 
+static Value parse_value(const char *string, int length) {
+    // Literals.
+    switch (length) {
+    case 3:
+        if (memcmp(string, "nil", 3) == 0) {
+            return NIL_VAL;
+        }
+        break;
+    case 4:
+        if (memcmp(string, "true", 4) == 0) {
+            return BOOL_VAL(true);
+        }
+        break;
+    case 5:
+        if (memcmp(string, "false", 5) == 0) {
+            return BOOL_VAL(false);
+        }
+        break;
+    }
+
+    // Numbers.
+    char *end;
+    double number = strtod(string, &end);
+    if (end == string + length) {
+        // Entire string was a number, so return it.
+        return NUMBER_VAL(number);
+    }
+
+    // If all the other checks failed, it must just be a string.
+    return OBJ_VAL(copy_string(string, length));
+}
+
 static bool is_falsey(Value value) {
     return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
 }
@@ -177,7 +212,7 @@ static void concatenate(void) {
     push(OBJ_VAL(result));
 }
 
-static InterpretResult run () {
+static InterpretResult run() {
     CallFrame *frame = &vm.frames[vm.frame_count - 1];
     register uint8_t *ip = frame->ip;
     
@@ -374,6 +409,20 @@ static InterpretResult run () {
             }
             push(NUMBER_VAL(-AS_NUMBER(pop())));
             break;
+        case OP_INPUT: {
+            char buf[INPUT_MAX];
+            if (fgets(buf, INPUT_MAX, stdin) == NULL) {
+                runtime_error("Error reading from stdin.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            int length = strlen(buf);
+            if (length > 0 && buf[length - 1] == '\n') {
+                // Decrease length and replace '\n' with null byte.
+                buf[--length] = '\0';
+            }
+            push(parse_value(buf, length));
+            break;
+        }
         case OP_PRINT: {
             // TODO: This could be changed to a call to `to_string()` since we already defined it.
             // i.e.

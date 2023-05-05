@@ -127,7 +127,14 @@ static TokenType identifier_type(void) {
             }
         }
         break;
-    case 'i': return check_keyword(1, 1, "f", TOKEN_IF);
+    case 'i':
+        if (scanner.current - scanner.start > 1) {
+            switch (scanner.start[1]) {
+            case 'f': return check_keyword(2, 0, "", TOKEN_IF);
+            case 'n': return check_keyword(2, 3, "put", TOKEN_INPUT);
+            }
+        }
+        break;
     case 'n': return check_keyword(1, 2, "il", TOKEN_NIL);
     case 'o': return check_keyword(1, 1, "r", TOKEN_OR);
     case 'p': return check_keyword(1, 4, "rint", TOKEN_PRINT);
@@ -144,8 +151,8 @@ static TokenType identifier_type(void) {
     case 'v':
         if (scanner.current - scanner.start > 2 && scanner.start[1] == 'a') {
             switch (scanner.start[2]) {
-            case 'l': return TOKEN_VAL;
-            case 'r': return TOKEN_VAR;
+            case 'l': return check_keyword(3, 0, "", TOKEN_VAL);
+            case 'r': return check_keyword(3, 0, "", TOKEN_VAR);
             }
         }
         return TOKEN_IDENTIFIER;

@@ -589,6 +589,7 @@ ParseRule rules[] = {
     [TOKEN_FOR]           = {NULL,       NULL,        PREC_NONE},
     [TOKEN_FUN]           = {NULL,       NULL,        PREC_NONE},
     [TOKEN_IF]            = {NULL,       NULL,        PREC_NONE},
+    [TOKEN_INPUT]         = {NULL,       NULL,        PREC_NONE},
     [TOKEN_NIL]           = {literal,    NULL,        PREC_NONE},
     [TOKEN_OR]            = {NULL,       or,          PREC_OR},
     [TOKEN_PRINT]         = {NULL,       NULL,        PREC_NONE},
@@ -804,6 +805,27 @@ static void if_statement(void) {
     patch_jump(else_jump);
 }
 
+static void input_statement(void) {
+    emit_byte(OP_INPUT);  // Pushes input to the stack.
+    consume(TOKEN_IDENTIFIER, "Expect variable name after 'input'.");
+    Token *name = &parser.previous;
+    uint32_t arg = resolve_local(current, name);
+    uint8_t set_op, set_long_op;
+    if (arg != (unsigned)-1) {
+        set_op = OP_SET_LOCAL;
+        set_long_op = OP_SET_LOCAL_LONG;
+    }
+    else {
+        arg = identifier_constant(name);
+        set_op = OP_SET_GLOBAL;
+        set_long_op = OP_SET_GLOBAL_LONG;
+    }
+    uint8_t instruction = (arg <= UINT8_MAX) ? set_op : set_long_op;
+    emit_varint_instruction(instruction, arg);
+    
+    consume(TOKEN_SEMICOLON, "Expect ';' after variable name.");
+}
+
 static void print_statement(void) {
     expression();
     consume(TOKEN_SEMICOLON, "Expect ';' after value.");
@@ -890,6 +912,9 @@ static void declaration(void) {
 static void statement(void) {
     if (match(TOKEN_PRINT)) {
         print_statement();
+    }
+    else if (match(TOKEN_INPUT)) {
+        input_statement();
     }
     else if (match(TOKEN_FOR)) {
         for_statement();
