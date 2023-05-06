@@ -156,6 +156,23 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return byte_instruction("OP_CALL", chunk, offset);
     case OP_CALL_LONG:
         return byte_long_instruction("OP_CALL_LONG", chunk, offset);
+    case OP_CLOSURE:
+    case OP_CLOSURE_LONG: {
+        offset++;
+        uint32_t constant = chunk->code[offset++];
+        const char *name = "OP_CLOSURE";
+        if (instruction == OP_CLOSURE_LONG) {
+            for (int i = 0; i < 2; ++i) {
+                constant <<= 8;
+                constant ^= (chunk->code[offset++]);
+            }
+            name = "OP_CLOSURE_LONG";
+        }
+        printf("%-16s %4d ", name, constant);
+        print_value(chunk->constants.values[constant]);
+        printf("\n");
+        return offset;
+    }
     case OP_RETURN:
         return simple_instruction("OP_RETURN", offset);
     default:
@@ -163,4 +180,3 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return offset + 1;
     }
 }
-    

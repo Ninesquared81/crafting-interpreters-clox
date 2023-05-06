@@ -663,7 +663,9 @@ static void function(FunctionType type) {
     block();
 
     ObjFunction *function = end_compiler();
-    emit_bytes(OP_CONSTANT, make_constant(OBJ_VAL(function)));
+    uint32_t function_constant = make_constant(OBJ_VAL(function));
+    uint8_t instruction = (function_constant <= UINT8_MAX) ? OP_CLOSURE : OP_CLOSURE_LONG;
+    emit_varint_instruction(instruction, function_constant);
 }
 
 static void fun_declaration(void) {

@@ -5,15 +5,16 @@
 #include "value.h"
 #include "line.h"
 
-#define IS_LONG_INSTRUCTION(opcode) (                                   \
-        (opcode) == OP_CONSTANT_LONG      ||                            \
-        (opcode) == OP_GET_GLOBAL_LONG    ||                            \
-        (opcode) == OP_GET_LOCAL_LONG     ||                            \
-        (opcode) == OP_DEFINE_GLOBAL_LONG ||                            \
-        (opcode) == OP_SET_GLOBAL_LONG    ||                            \
-        (opcode) == OP_SET_LOCAL_LONG     ||                            \
-        (opcode) == OP_POPN_LONG          ||                            \
-        (opcode) == OP_CALL_LONG                                        \
+#define IS_LONG_INSTRUCTION(opcode)             \
+    ((opcode) == OP_CONSTANT_LONG               \
+     || (opcode) == OP_GET_GLOBAL_LONG          \
+     || (opcode) == OP_GET_LOCAL_LONG           \
+     || (opcode) == OP_DEFINE_GLOBAL_LONG       \
+     || (opcode) == OP_SET_GLOBAL_LONG          \
+     || (opcode) == OP_SET_LOCAL_LONG           \
+     || (opcode) == OP_POPN_LONG                \
+     || (opcode) == OP_CALL_LONG                \
+     || (opcode) == OP_CLOSURE_LONG             \
         )
 
 typedef enum {
@@ -51,6 +52,8 @@ typedef enum {
     OP_LOOP,
     OP_CALL,
     OP_CALL_LONG,
+    OP_CLOSURE,
+    OP_CLOSURE_LONG,
     OP_RETURN,
 } OpCode;
 
