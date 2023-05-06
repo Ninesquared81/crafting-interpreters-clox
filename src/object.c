@@ -99,9 +99,21 @@ ObjString *to_string(Value value) {
         return take_string(chars, size - 1);
     }
     case VAL_OBJ:
-        switch (value.as.obj->type) {
+        switch (AS_OBJ(value)->type) {
         case OBJ_STRING:
-            return (ObjString *)value.as.obj;
+            return AS_STRING(value);
+        case OBJ_CLOSURE: {
+            ObjString *name = AS_CLOSURE(value)->function->name;
+            if (name == NULL) return FROM_STRING_LITERAL("<script>");
+            return name;
+        }
+        case OBJ_FUNCTION: {
+            ObjString *name = AS_FUNCTION(value)->name;
+            if (name == NULL) return FROM_STRING_LITERAL("<script>");
+            return name;
+        }
+        case OBJ_NATIVE:
+            return FROM_STRING_LITERAL("<native fn>");
         default:
             return FROM_STRING_LITERAL("<Unknown object>");  // Unreachable.
         }
