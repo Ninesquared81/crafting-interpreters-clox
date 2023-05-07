@@ -31,6 +31,7 @@ ObjClosure *new_closure(ObjFunction *function) {
 ObjFunction *new_function(void) {
     ObjFunction *function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
     function->arity = 0;
+    function->upvalue_count = 0;
     function->name = NULL;
     init_chunk(&function->chunk);
     return function;

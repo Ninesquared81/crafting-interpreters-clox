@@ -34,6 +34,7 @@ struct Obj {
 typedef struct {
     Obj obj;
     ulong arity;
+    ulong upvalue_count;
     Chunk chunk;
     ObjString *name;
 } ObjFunction;

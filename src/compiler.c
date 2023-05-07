@@ -49,6 +49,11 @@ typedef struct {
     bool is_mutable;
 } Local;
 
+typedef struct {
+    uint32_t index;
+    bool is_local;
+} Upvalue;
+
 typedef enum {
     TYPE_FUNCTION,
     TYPE_SCRIPT,
@@ -60,8 +65,10 @@ typedef struct Compiler {
     FunctionType type;
 
     Local *locals;
-    uint32_t local_count;
-    uint32_t local_capacity;
+    ulong local_count;
+    ulong local_capacity;
+    Upvalue *upvalues;
+    ulong upvalue_capacity;
     int scope_depth;
     LoopStack loops;
 } Compiler;
@@ -255,6 +262,8 @@ static void init_compiler(Compiler *compiler, FunctionType type) {
     compiler->local_count = 0;
     compiler->local_capacity = GROW_CAPACITY(0);
     compiler->locals = ALLOCATE(Local, compiler->local_capacity);
+    compiler->upvalues = NULL;
+    compiler->upvalue_capacity = 0;
     compiler->scope_depth = 0;
     compiler->function = new_function();
     init_loop_stack(&compiler->loops);
@@ -336,6 +345,48 @@ static uint32_t resolve_local(Compiler *compiler, Token *name) {
             }
             return local - compiler->locals;
         }
+    }
+
+    return -1;
+}
+
+static uint32_t add_upvalue(Compiler *compiler, uint32_t index, bool is_local) {
+    ulong upvalue_count = compiler->function->upvalue_count;
+
+    for (ulong i = 0; i < upvalue_count; ++i) {
+        Upvalue *upvalue = &compiler->upvalues[i];
+        if (upvalue->index == index && upvalue->is_local == is_local) {
+            return i;
+        }
+    }
+
+    if (upvalue_count == UINT24_COUNT) {
+        error("Too many closure variables in function.");
+        return 0;
+    }
+
+    if (compiler->upvalue_capacity < upvalue_count + 1) {
+        ulong old_capacity = compiler->upvalue_capacity;
+        compiler->upvalue_capacity = GROW_CAPACITY(old_capacity);
+        compiler->upvalues = GROW_ARRAY(Upvalue, compiler->upvalues, old_capacity, compiler->upvalue_capacity);
+    }
+    
+    compiler->upvalues[upvalue_count].is_local = is_local;
+    compiler->upvalues[upvalue_count].index = index;
+    return compiler->function->upvalue_count++;
+}
+
+static uint32_t resolve_upvalue(Compiler *compiler, Token *name) {
+    if (compiler->enclosing == NULL) return -1;
+
+    uint32_t local = resolve_local(compiler->enclosing, name);
+    if (local != (unsigned)-1) {
+        return add_upvalue(compiler, local, true);
+    }
+
+    uint32_t upvalue = resolve_upvalue(compiler->enclosing, name);
+    if (upvalue != (unsigned)-1) {
+        return add_upvalue(compiler, upvalue, false);
     }
 
     return -1;
@@ -520,6 +571,10 @@ static void named_variable(Token name, bool can_assign) {
         get_op = (arg <= UINT8_MAX) ? OP_GET_LOCAL : OP_GET_LOCAL_LONG;
         set_op = (arg <= UINT8_MAX) ? OP_SET_LOCAL : OP_SET_LOCAL_LONG;
     }
+    else if ((arg = resolve_upvalue(current, &name)) != (unsigned)-1) {
+        get_op = (arg <= UINT8_MAX) ? OP_GET_UPVALUE : OP_GET_UPVALUE_LONG;
+        set_op = (arg <= UINT8_MAX) ? OP_SET_UPVALUE : OP_SET_UPVALUE_LONG;
+    }
     else {
         arg = identifier_constant(&name);
         get_op = (arg <= UINT8_MAX) ? OP_GET_GLOBAL : OP_GET_GLOBAL_LONG;
@@ -666,6 +721,18 @@ static void function(FunctionType type) {
     uint32_t function_constant = make_constant(OBJ_VAL(function));
     uint8_t instruction = (function_constant <= UINT8_MAX) ? OP_CLOSURE : OP_CLOSURE_LONG;
     emit_varint_instruction(instruction, function_constant);
+
+    for (ulong i = 0; i < function->upvalue_count; ++i) {
+        uint32_t index = compiler.upvalues[i].index;
+        bool is_long = (index > UINT8_MAX);
+        uint8_t first_byte = (compiler.upvalues[i].is_local) ^ (is_long << 7);  // byte stores (is_long) 0 0 0 0 0 0 (is_local)
+        uint8_t last_byte = index;
+        emit_byte(first_byte);
+        if (is_long) {
+            emit_bytes(index >> 16, index >> 8);
+        }
+        emit_byte(last_byte);
+    }
 }
 
 static void fun_declaration(void) {

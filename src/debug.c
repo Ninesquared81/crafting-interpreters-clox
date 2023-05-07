@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "debug.h"
+#include "object.h"
 #include "value.h"
 
 
@@ -124,6 +125,14 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return byte_instruction("OP_SET_LOCAL", chunk, offset);
     case OP_SET_LOCAL_LONG:
         return byte_long_instruction("OP_SET_LOCAL_LONG", chunk, offset);
+    case OP_GET_UPVALUE:
+        return byte_instruction("OP_GET_UPVALUE", chunk, offset);
+    case OP_GET_UPVALUE_LONG:
+        return byte_long_instruction("OP_GET_UPVALUE_LONG", chunk, offset);
+    case OP_SET_UPVALUE:
+        return byte_instruction("OP_SET_UPVALUE", chunk, offset);
+    case OP_SET_UPVALUE_LONG:
+        return byte_long_instruction("OP_SET_UPVALUE_LONG", chunk, offset);
     case OP_EQUAL:
         return simple_instruction("OP_EQUAL", offset);
     case OP_GREATER:
@@ -159,18 +168,33 @@ int disassemble_instruction(Chunk *chunk, int offset) {
     case OP_CLOSURE:
     case OP_CLOSURE_LONG: {
         offset++;
-        uint32_t constant = chunk->code[offset++];
+        ulong constant = chunk->code[offset++];
         const char *name = "OP_CLOSURE";
         if (instruction == OP_CLOSURE_LONG) {
-            for (int i = 0; i < 2; ++i) {
-                constant <<= 8;
-                constant ^= (chunk->code[offset++]);
-            }
+            constant <<= 16;
+            constant ^= (chunk->code[offset++]) << 8;
+            constant ^= (chunk->code[offset++]);
             name = "OP_CLOSURE_LONG";
         }
-        printf("%-16s %4d ", name, constant);
+        printf("%-16s %4lu ", name, constant);
         print_value(chunk->constants.values[constant]);
         printf("\n");
+
+        ObjFunction *function = AS_FUNCTION(chunk->constants.values[constant]);
+        for (ulong j = 0; j < function->upvalue_count; ++j) {
+            uint8_t byte1 = chunk->code[offset++];
+            bool is_long = byte1 >> 7;
+            int is_local = byte1 & 1;
+            ulong index = chunk->code[offset++];
+            if (is_long) {
+                index <<= 16;
+                index ^= (chunk->code[offset++]) << 8;
+                index ^= (chunk->code[offset++]);
+            }
+            printf("%04d      |                      %s %lu\n",
+                   offset - 2, is_local ? "local" : "upvalue", index);
+        }
+
         return offset;
     }
     case OP_RETURN:

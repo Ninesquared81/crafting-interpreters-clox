@@ -15,6 +15,8 @@
      || (opcode) == OP_POPN_LONG                \
      || (opcode) == OP_CALL_LONG                \
      || (opcode) == OP_CLOSURE_LONG             \
+     || (opcode) == OP_GET_UPVALUE_LONG         \
+     || (opcode) == OP_SET_UPVALUE_LONG         \
         )
 
 typedef enum {
@@ -26,16 +28,20 @@ typedef enum {
     OP_POP,
     OP_POPN,
     OP_POPN_LONG,
-    OP_GET_GLOBAL,
-    OP_GET_GLOBAL_LONG,
     OP_GET_LOCAL,
     OP_GET_LOCAL_LONG,
+    OP_SET_LOCAL,
+    OP_SET_LOCAL_LONG,
+    OP_GET_GLOBAL,
+    OP_GET_GLOBAL_LONG,
     OP_DEFINE_GLOBAL,
     OP_DEFINE_GLOBAL_LONG,
     OP_SET_GLOBAL,
     OP_SET_GLOBAL_LONG,
-    OP_SET_LOCAL,
-    OP_SET_LOCAL_LONG,
+    OP_GET_UPVALUE,
+    OP_GET_UPVALUE_LONG,
+    OP_SET_UPVALUE,
+    OP_SET_UPVALUE_LONG,
     OP_EQUAL,
     OP_GREATER,
     OP_LESS,
