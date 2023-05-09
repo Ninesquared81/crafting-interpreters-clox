@@ -23,6 +23,7 @@ static void reset_stack(void) {
 
 static void init_stack(void) {
     vm.stack = ALLOCATE(Value, STACK_SIZE_INIT);
+    vm.stack_capacity = STACK_SIZE_INIT;
     reset_stack();
 }
 
@@ -99,6 +100,10 @@ void push(Value value) {
         // Note: We have to save the offset and use it here, since at this point the slots pointer is invalid.
         for (CallFrame *frame = vm.frames; frame < vm.frames + vm.frame_count; ++frame) {
             frame->slots = vm.stack + frame->slots_offset;
+            for (ulong j = 0; j < frame->closure->upvalue_count; ++j) {
+                ObjUpvalue *upvalue = frame->closure->upvalues[j];
+                upvalue->location = vm.stack + upvalue->offset;
+            }
         }
     }
     *vm.stack_top++ = value;
@@ -163,6 +168,11 @@ static bool call_value(Value callee, ulong arg_count) {
     return false;
 }
 
+static ObjUpvalue *capture_upvalue(Value *local) {
+    ObjUpvalue *created_upvalue = new_upvalue(local);
+    return created_upvalue;
+}
+
 static Value parse_value(const char *string, int length) {
     // Literals.
     switch (length) {
@@ -212,7 +222,7 @@ static void concatenate(void) {
     push(OBJ_VAL(result));
 }
 
-static InterpretResult run() {
+static InterpretResult run(void) {
     CallFrame *frame = &vm.frames[vm.frame_count - 1];
     register uint8_t *ip = frame->ip;
     
@@ -359,6 +369,26 @@ static InterpretResult run() {
             frame->slots[slot] = peek(0);
             break;
         }
+        case OP_GET_UPVALUE: {
+            uint8_t slot = READ_BYTE();
+            push(*frame->closure->upvalues[slot]->location);
+            break;
+        }
+        case OP_GET_UPVALUE_LONG: {
+            uint32_t slot = READ_BYTES();
+            push(*frame->closure->upvalues[slot]->location);
+            break;
+        }
+        case OP_SET_UPVALUE: {
+            uint8_t slot = READ_BYTE();
+            *frame->closure->upvalues[slot]->location = peek(0);
+            break;
+        }
+        case OP_SET_UPVALUE_LONG: {
+            uint32_t slot = READ_BYTES();
+            *frame->closure->upvalues[slot]->location = peek(0);
+            break;
+        }
         case OP_EQUAL: {
             Value b = pop();
             Value a = pop();
@@ -470,12 +500,36 @@ static InterpretResult run() {
             ObjFunction *function = AS_FUNCTION(READ_CONSTANT());
             ObjClosure *closure = new_closure(function);
             push(OBJ_VAL(closure));
+            for (ulong i = 0; i < closure->upvalue_count; ++i) {
+                uint8_t first_byte = READ_BYTE();
+                bool is_local = first_byte & 1;
+                bool is_long = first_byte >> 7;
+                uint32_t index = (!is_long) ? READ_BYTE() : READ_BYTES();
+                if (is_local) {
+                    closure->upvalues[i] = capture_upvalue(frame->slots + index);
+                }
+                else {
+                    closure->upvalues[i] = frame->closure->upvalues[index];
+                }
+            }
             break;
         }
         case OP_CLOSURE_LONG: {
             ObjFunction *function = AS_FUNCTION(READ_CONSTANT_LONG());
             ObjClosure *closure = new_closure(function);
             push(OBJ_VAL(closure));
+            for (ulong i = 0; i < closure->upvalue_count; ++i) {
+                uint8_t first_byte = READ_BYTE();
+                bool is_local = first_byte & 1;
+                bool is_long = first_byte >> 7;
+                uint32_t index = (!is_long) ? READ_BYTE() : READ_BYTES();
+                if (is_local) {
+                    closure->upvalues[i] = capture_upvalue(frame->slots + index);
+                }
+                else {
+                    closure->upvalues[i] = frame->closure->upvalues[index];
+                }
+            }
             break;
         }
         case OP_RETURN: {
