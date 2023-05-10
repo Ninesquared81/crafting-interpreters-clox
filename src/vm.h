@@ -28,6 +28,7 @@ typedef struct {
     Table globals;
     Set immutable_globals;
     Table strings;
+    ObjUpvalue *open_upvalues;
     Obj *objects;
 } VM;
 

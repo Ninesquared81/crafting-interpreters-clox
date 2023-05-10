@@ -47,6 +47,7 @@ typedef struct {
     Token name;
     int depth;
     bool is_mutable;
+    bool is_captured;
 } Local;
 
 typedef struct {
@@ -274,6 +275,8 @@ static void init_compiler(Compiler *compiler, FunctionType type) {
     
     Local *local = &current->locals[current->local_count++];
     local->depth = 0;
+    local->is_mutable = false;
+    local->is_captured = false;
     local->name.start = "";
     local->name.length = 0;
 }
@@ -314,10 +317,16 @@ static void end_scope(void) {
     uint32_t pop_count = 0;
     while (current->local_count > 0 &&
            current->locals[current->local_count - 1].depth > current->scope_depth) {
-        pop_count++;
+        if (current->locals[current->local_count - 1].is_captured) {
+            emit_popn(pop_count);  // Note: emit_popn() correctly handles the case for 0 pops.
+            pop_count = 0;
+            emit_byte(OP_CLOSE_UPVALUE);
+        }
+        else {
+            pop_count++;
+        }
         current->local_count--;
     }
-
     emit_popn(pop_count);
 }
 
@@ -381,6 +390,7 @@ static uint32_t resolve_upvalue(Compiler *compiler, Token *name) {
 
     uint32_t local = resolve_local(compiler->enclosing, name);
     if (local != (unsigned)-1) {
+        compiler->enclosing->locals[local].is_captured = true;
         return add_upvalue(compiler, local, true);
     }
 
@@ -407,6 +417,7 @@ static void add_local(Token name, bool is_mutable) {
     local->name = name;
     local->depth = -1;
     local->is_mutable = is_mutable;
+    local->is_captured = false;
 }
 
 static void declare_variable(bool is_mutable) {

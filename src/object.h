@@ -59,6 +59,8 @@ typedef struct ObjUpvalue {
     Obj obj;
     Value *location;
     ptrdiff_t offset;
+    Value closed;
+    struct ObjUpvalue *next;
 } ObjUpvalue;
 
 typedef struct {
