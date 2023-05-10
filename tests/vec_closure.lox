@@ -1,0 +1,49 @@
+var get_x;
+var get_y;
+var set_x;
+var set_y;
+
+fun Vec2D(x, y) {
+    fun vec() {
+        fun get_x_() {
+            return x;
+        }
+        fun get_y_() {
+            return y;
+        }
+        fun set_x_(x_) {
+            x = x_;
+        }
+        fun set_y_(y_) {
+            y = y_;
+        }
+        get_x = get_x_;
+        get_y = get_y_;
+        set_x = set_x_;
+        set_y = set_y_;
+    }
+    return vec;
+}
+
+fun add(v1, v2) {
+    v1();
+    var x1 = get_x();
+    var y1 = get_y();
+    v2();
+    var x2 = get_x();
+    var y2 = get_y();
+    return Vec2D(x1 + x2, y1 + y2);
+}
+
+var v1 = Vec2D(1, 2);
+v1();
+print "(" + get_x() + ", " + get_y() + ")";
+var v2 = Vec2D(0, 7);
+v2();
+print "  +";
+print "(" + get_x() + ", " + get_y() + ")";
+var v3 = add(v1, v2);
+v3();
+print "  =";
+print "(" + get_x() + ", " + get_y() + ")";
+
