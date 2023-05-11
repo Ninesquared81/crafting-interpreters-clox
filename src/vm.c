@@ -144,24 +144,27 @@ static bool call(ObjClosure *closure, ulong arg_count) {
     return true;
 }
 
+static bool call_native(ObjNative *native, ulong arg_count) {
+    if (arg_count != native->arity) {
+        runtime_error("Expected %lu arguments but got %lu.", native->arity, arg_count);
+        return false;
+    }
+    Value result;
+    if (!native->function(arg_count, vm.stack_top - arg_count, &result)) {
+        return false;
+    }
+    vm.stack_top -= arg_count + 1;
+    push(result);
+    return true;
+}
+
 static bool call_value(Value callee, ulong arg_count) {
     if (IS_OBJ(callee)) {
         switch (OBJ_TYPE(callee)) {
         case OBJ_CLOSURE:
             return call(AS_CLOSURE(callee), arg_count);
         case OBJ_NATIVE: {
-            ObjNative *native = AS_NATIVE(callee);
-            if (arg_count != native->arity) {
-                runtime_error("Expected %lu arguments but got %lu.", native->arity, arg_count);
-                return false;
-            }
-            Value result;
-            if (!native->function(arg_count, vm.stack_top - arg_count, &result)) {
-                return false;
-            }
-            vm.stack_top -= arg_count + 1;
-            push(result);
-            return true;
+            call_native(AS_NATIVE(callee), arg_count);
         }
         default:
             break;  // Non-callable object type.
