@@ -164,7 +164,7 @@ static bool call_value(Value callee, ulong arg_count) {
         case OBJ_CLOSURE:
             return call(AS_CLOSURE(callee), arg_count);
         case OBJ_NATIVE: {
-            call_native(AS_NATIVE(callee), arg_count);
+            return call_native(AS_NATIVE(callee), arg_count);
         }
         default:
             break;  // Non-callable object type.
