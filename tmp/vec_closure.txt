@@ -439,103 +439,103 @@
 0007    | OP_CALL             0
       [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ <fn get_x_> ]
 0000    9 OP_GET_UPVALUE      0
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ <fn get_x_> ][ 9 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ <fn get_x_> ][ 4 ]
 0002    | OP_RETURN
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ]
 0009   31 OP_GET_GLOBAL    1 'get_y'
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ <fn get_y_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ <fn get_y_> ]
 0011    | OP_CALL             0
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ <fn get_y_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ <fn get_y_> ]
 0000   12 OP_GET_UPVALUE      0
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ <fn get_y_> ][ 16 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ <fn get_y_> ][ 5 ]
 0002    | OP_RETURN
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ]
 0013   32 OP_GET_LOCAL        2
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ]
 0015    | OP_CALL             0
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ]
 0000   10 OP_CLOSURE          0 <fn get_x_>
 0002      |                      upvalue 0
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ]
 0004   13 OP_CLOSURE          1 <fn get_y_>
 0006      |                      upvalue 1
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ]
 0008   16 OP_CLOSURE          2 <fn set_x_>
 0010      |                      upvalue 0
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ]
 0012   19 OP_CLOSURE          3 <fn set_y_>
 0014      |                      upvalue 1
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ]
 0016   20 OP_GET_LOCAL        1
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn get_x_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn get_x_> ]
 0018    | OP_SET_GLOBAL    4 'get_x'
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn get_x_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn get_x_> ]
 0020    | OP_POP
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ]
 0021   21 OP_GET_LOCAL        2
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn get_y_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn get_y_> ]
 0023    | OP_SET_GLOBAL    5 'get_y'
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn get_y_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn get_y_> ]
 0025    | OP_POP
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ]
 0026   22 OP_GET_LOCAL        3
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn set_x_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn set_x_> ]
 0028    | OP_SET_GLOBAL    6 'set_x'
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn set_x_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn set_x_> ]
 0030    | OP_POP
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ]
 0031   23 OP_GET_LOCAL        4
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn set_y_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn set_y_> ]
 0033    | OP_SET_GLOBAL    7 'set_y'
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn set_y_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ <fn set_y_> ]
 0035    | OP_POP
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ]
 0036   24 OP_NIL
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ nil ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn vec> ][ <fn get_x_> ][ <fn get_y_> ][ <fn set_x_> ][ <fn set_y_> ][ nil ]
 0037    | OP_RETURN
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ nil ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ nil ]
 0017    | OP_POP
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ]
 0018   33 OP_GET_GLOBAL    0 'get_x'
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn get_x_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn get_x_> ]
 0020    | OP_CALL             0
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn get_x_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn get_x_> ]
 0000    9 OP_GET_UPVALUE      0
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ <fn get_x_> ][ 9 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ <fn get_x_> ][ 9 ]
 0002    | OP_RETURN
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ]
 0022   34 OP_GET_GLOBAL    1 'get_y'
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ][ <fn get_y_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ][ <fn get_y_> ]
 0024    | OP_CALL             0
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ][ <fn get_y_> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ][ <fn get_y_> ]
 0000   12 OP_GET_UPVALUE      0
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ][ <fn get_y_> ][ 16 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ][ <fn get_y_> ][ 16 ]
 0002    | OP_RETURN
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ][ 16 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ][ 16 ]
 0026   35 OP_GET_GLOBAL    2 'Vec2D'
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ][ 16 ][ <fn Vec2D> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ][ 16 ][ <fn Vec2D> ]
 0028    | OP_GET_LOCAL        3
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ][ 16 ][ <fn Vec2D> ][ 9 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ][ 16 ][ <fn Vec2D> ][ 4 ]
 0030    | OP_GET_LOCAL        5
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ][ 16 ][ <fn Vec2D> ][ 9 ][ 9 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ][ 16 ][ <fn Vec2D> ][ 4 ][ 9 ]
 0032    | OP_ADD
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ][ 16 ][ <fn Vec2D> ][ 18 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ][ 16 ][ <fn Vec2D> ][ 13 ]
 0033    | OP_GET_LOCAL        4
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ][ 16 ][ <fn Vec2D> ][ 18 ][ 16 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ][ 16 ][ <fn Vec2D> ][ 13 ][ 5 ]
 0035    | OP_GET_LOCAL        6
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ][ 16 ][ <fn Vec2D> ][ 18 ][ 16 ][ 16 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ][ 16 ][ <fn Vec2D> ][ 13 ][ 5 ][ 16 ]
 0037    | OP_ADD
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ][ 16 ][ <fn Vec2D> ][ 18 ][ 32 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ][ 16 ][ <fn Vec2D> ][ 13 ][ 21 ]
 0038    | OP_CALL             2
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ][ 16 ][ <fn Vec2D> ][ 18 ][ 32 ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ][ 16 ][ <fn Vec2D> ][ 13 ][ 21 ]
 0000   24 OP_CLOSURE          0 <fn vec>
 0002      |                      local 1
 0004      |                      local 2
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ][ 16 ][ <fn Vec2D> ][ 18 ][ 32 ][ <fn vec> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ][ 16 ][ <fn Vec2D> ][ 13 ][ 21 ][ <fn vec> ]
 0006   25 OP_GET_LOCAL        3
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ][ 16 ][ <fn Vec2D> ][ 18 ][ 32 ][ <fn vec> ][ <fn vec> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ][ 16 ][ <fn Vec2D> ][ 13 ][ 21 ][ <fn vec> ][ <fn vec> ]
 0008    | OP_RETURN
-      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 9 ][ 16 ][ 9 ][ 16 ][ <fn vec> ]
+      [ <script> ][ <fn add> ][ <fn vec> ][ <fn vec> ][ 4 ][ 5 ][ 9 ][ 16 ][ <fn vec> ]
 0040    | OP_RETURN
       [ <script> ][ <fn vec> ]
 0107    | OP_DEFINE_GLOBAL 18 'v3' 1
@@ -598,31 +598,31 @@
 0122    | OP_CALL             0
       [ <script> ][ ( ][ <fn get_x_> ]
 0000    9 OP_GET_UPVALUE      0
-      [ <script> ][ ( ][ <fn get_x_> ][ 18 ]
+      [ <script> ][ ( ][ <fn get_x_> ][ 13 ]
 0002    | OP_RETURN
-      [ <script> ][ ( ][ 18 ]
+      [ <script> ][ ( ][ 13 ]
 0124    | OP_ADD
-      [ <script> ][ (18 ]
+      [ <script> ][ (13 ]
 0125    | OP_CONSTANT      12 ', '
-      [ <script> ][ (18 ][ ,  ]
+      [ <script> ][ (13 ][ ,  ]
 0127    | OP_ADD
-      [ <script> ][ (18,  ]
+      [ <script> ][ (13,  ]
 0128    | OP_GET_GLOBAL    1 'get_y'
-      [ <script> ][ (18,  ][ <fn get_y_> ]
+      [ <script> ][ (13,  ][ <fn get_y_> ]
 0130    | OP_CALL             0
-      [ <script> ][ (18,  ][ <fn get_y_> ]
+      [ <script> ][ (13,  ][ <fn get_y_> ]
 0000   12 OP_GET_UPVALUE      0
-      [ <script> ][ (18,  ][ <fn get_y_> ][ 32 ]
+      [ <script> ][ (13,  ][ <fn get_y_> ][ 21 ]
 0002    | OP_RETURN
-      [ <script> ][ (18,  ][ 32 ]
+      [ <script> ][ (13,  ][ 21 ]
 0132    | OP_ADD
-      [ <script> ][ (18, 32 ]
+      [ <script> ][ (13, 21 ]
 0133    | OP_CONSTANT      13 ')'
-      [ <script> ][ (18, 32 ][ ) ]
+      [ <script> ][ (13, 21 ][ ) ]
 0135    | OP_ADD
-      [ <script> ][ (18, 32) ]
+      [ <script> ][ (13, 21) ]
 0136    | OP_PRINT
-(18, 32)
+(13, 21)
       [ <script> ]
 0137   50 OP_NIL
       [ <script> ][ nil ]

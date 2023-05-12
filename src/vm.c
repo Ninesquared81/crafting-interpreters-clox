@@ -102,7 +102,7 @@ void push(Value value) {
         for (CallFrame *frame = vm.frames; frame < vm.frames + vm.frame_count; ++frame) {
             frame->slots = vm.stack + frame->slots_offset;
 
-            ObjClosure *closure = frame->function->closure;
+            ObjClosure *closure = frame->closure;
             if (closure == NULL) continue;  // Only update upvalues for a closure.
 
             for (ulong j = 0; j < closure->upvalue_count; ++j) {
@@ -129,7 +129,7 @@ static Value peek(int distance) {
     return vm.stack_top[-1 - distance];
 }
 
-static bool call(ObjFunction *function, ulong arg_count) {
+static bool call(ObjFunction *function, ObjClosure *closure, ulong arg_count) {
     if (arg_count != function->arity) {
         runtime_error("Expected %lu arguments but got %lu.", function->arity, arg_count);
         return false;
@@ -142,6 +142,7 @@ static bool call(ObjFunction *function, ulong arg_count) {
 
     CallFrame *frame = &vm.frames[vm.frame_count++];
     frame->function = function;
+    frame->closure = closure;
     frame->ip = function->chunk.code;
     frame->slots = vm.stack_top - arg_count - 1;
     frame->slots_offset = frame->slots - vm.stack;
@@ -165,10 +166,12 @@ static bool call_native(ObjNative *native, ulong arg_count) {
 static bool call_value(Value callee, ulong arg_count) {
     if (IS_OBJ(callee)) {
         switch (OBJ_TYPE(callee)) {
-        case OBJ_CLOSURE:
-            return call(AS_CLOSURE(callee)->function, arg_count);
+        case OBJ_CLOSURE: {
+            ObjClosure *closure = AS_CLOSURE(callee);
+            return call(closure->function, closure, arg_count);
+        }
         case OBJ_FUNCTION:
-            return call(AS_FUNCTION(callee), arg_count);
+            return call(AS_FUNCTION(callee), NULL, arg_count);
         case OBJ_NATIVE: {
             return call_native(AS_NATIVE(callee), arg_count);
         }
@@ -412,22 +415,22 @@ static InterpretResult run(void) {
         }
         case OP_GET_UPVALUE: {
             uint8_t slot = READ_BYTE();
-            push(*frame->function->closure->upvalues[slot]->location);
+            push(*frame->closure->upvalues[slot]->location);
             break;
         }
         case OP_GET_UPVALUE_LONG: {
             uint32_t slot = READ_BYTES();
-            push(*frame->function->closure->upvalues[slot]->location);
+            push(*frame->closure->upvalues[slot]->location);
             break;
         }
         case OP_SET_UPVALUE: {
             uint8_t slot = READ_BYTE();
-            *frame->function->closure->upvalues[slot]->location = peek(0);
+            *frame->closure->upvalues[slot]->location = peek(0);
             break;
         }
         case OP_SET_UPVALUE_LONG: {
             uint32_t slot = READ_BYTES();
-            *frame->function->closure->upvalues[slot]->location = peek(0);
+            *frame->closure->upvalues[slot]->location = peek(0);
             break;
         }
         case OP_EQUAL: {
@@ -550,7 +553,7 @@ static InterpretResult run(void) {
                     closure->upvalues[i] = capture_upvalue(frame->slots + index);
                 }
                 else {
-                    closure->upvalues[i] = frame->function->closure->upvalues[index];
+                    closure->upvalues[i] = frame->closure->upvalues[index];
                 }
             }
             break;
@@ -568,7 +571,7 @@ static InterpretResult run(void) {
                     closure->upvalues[i] = capture_upvalue(frame->slots + index);
                 }
                 else {
-                    closure->upvalues[i] = frame->function->closure->upvalues[index];
+                    closure->upvalues[i] = frame->closure->upvalues[index];
                 }
             }
             break;
@@ -609,7 +612,7 @@ InterpretResult interpret(const char *source) {
     if (function == NULL) return INTERPRET_COMPILE_ERROR;
 
     push(OBJ_VAL(function));
-    call(function, 0);
+    call(function, NULL, 0);
 
     return run();
 }
