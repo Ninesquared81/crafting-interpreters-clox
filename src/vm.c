@@ -44,7 +44,7 @@ void runtime_error(const char *format, ...) {
 
     for (int i = vm.frame_count - 1; i >= 0; --i) {
         CallFrame *frame = &vm.frames[i];
-        ObjFunction *function = frame->closure->function;
+        ObjFunction *function = frame->function;
         size_t instruction = frame->ip - function->chunk.code - 1;
         int line = get_line(&function->chunk.lines, instruction);
         fprintf(stderr, "[line %d] in ", line);
@@ -101,8 +101,12 @@ void push(Value value) {
         // Note: We have to save the offset and use it here, since at this point the slots pointer is invalid.
         for (CallFrame *frame = vm.frames; frame < vm.frames + vm.frame_count; ++frame) {
             frame->slots = vm.stack + frame->slots_offset;
-            for (ulong j = 0; j < frame->closure->upvalue_count; ++j) {
-                ObjUpvalue *upvalue = frame->closure->upvalues[j];
+
+            ObjClosure *closure = frame->function->closure;
+            if (closure == NULL) continue;  // Only update upvalues for a closure.
+
+            for (ulong j = 0; j < closure->upvalue_count; ++j) {
+                ObjUpvalue *upvalue = closure->upvalues[j];
                 if (upvalue->location != &upvalue->closed) {
                     upvalue->location = vm.stack + upvalue->offset;
                 }
@@ -125,9 +129,9 @@ static Value peek(int distance) {
     return vm.stack_top[-1 - distance];
 }
 
-static bool call(ObjClosure *closure, ulong arg_count) {
-    if (arg_count != closure->function->arity) {
-        runtime_error("Expected %lu arguments but got %lu.", closure->function->arity, arg_count);
+static bool call(ObjFunction *function, ulong arg_count) {
+    if (arg_count != function->arity) {
+        runtime_error("Expected %lu arguments but got %lu.", function->arity, arg_count);
         return false;
     }
 
@@ -137,8 +141,8 @@ static bool call(ObjClosure *closure, ulong arg_count) {
     }
 
     CallFrame *frame = &vm.frames[vm.frame_count++];
-    frame->closure = closure;
-    frame->ip = closure->function->chunk.code;
+    frame->function = function;
+    frame->ip = function->chunk.code;
     frame->slots = vm.stack_top - arg_count - 1;
     frame->slots_offset = frame->slots - vm.stack;
     return true;
@@ -162,7 +166,9 @@ static bool call_value(Value callee, ulong arg_count) {
     if (IS_OBJ(callee)) {
         switch (OBJ_TYPE(callee)) {
         case OBJ_CLOSURE:
-            return call(AS_CLOSURE(callee), arg_count);
+            return call(AS_CLOSURE(callee)->function, arg_count);
+        case OBJ_FUNCTION:
+            return call(AS_FUNCTION(callee), arg_count);
         case OBJ_NATIVE: {
             return call_native(AS_NATIVE(callee), arg_count);
         }
@@ -267,8 +273,8 @@ static InterpretResult run(void) {
                       (ip[-2] << 8)  ^     \
                       (ip[-1]     )))
 #define READ_SHORT() (ip += 2, (uint16_t)((ip[-2] << 8) | ip[-1]))
-#define READ_CONSTANT() (frame->closure->function->chunk.constants.values[READ_BYTE()])
-#define READ_CONSTANT_LONG() (frame->closure->function->chunk.constants.values[READ_BYTES()])
+#define READ_CONSTANT() (frame->function->chunk.constants.values[READ_BYTE()])
+#define READ_CONSTANT_LONG() (frame->function->chunk.constants.values[READ_BYTES()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define READ_STRING_LONG() AS_STRING(READ_CONSTANT_LONG())
 
@@ -406,22 +412,22 @@ static InterpretResult run(void) {
         }
         case OP_GET_UPVALUE: {
             uint8_t slot = READ_BYTE();
-            push(*frame->closure->upvalues[slot]->location);
+            push(*frame->function->closure->upvalues[slot]->location);
             break;
         }
         case OP_GET_UPVALUE_LONG: {
             uint32_t slot = READ_BYTES();
-            push(*frame->closure->upvalues[slot]->location);
+            push(*frame->function->closure->upvalues[slot]->location);
             break;
         }
         case OP_SET_UPVALUE: {
             uint8_t slot = READ_BYTE();
-            *frame->closure->upvalues[slot]->location = peek(0);
+            *frame->function->closure->upvalues[slot]->location = peek(0);
             break;
         }
         case OP_SET_UPVALUE_LONG: {
             uint32_t slot = READ_BYTES();
-            *frame->closure->upvalues[slot]->location = peek(0);
+            *frame->function->closure->upvalues[slot]->location = peek(0);
             break;
         }
         case OP_EQUAL: {
@@ -544,7 +550,7 @@ static InterpretResult run(void) {
                     closure->upvalues[i] = capture_upvalue(frame->slots + index);
                 }
                 else {
-                    closure->upvalues[i] = frame->closure->upvalues[index];
+                    closure->upvalues[i] = frame->function->closure->upvalues[index];
                 }
             }
             break;
@@ -562,7 +568,7 @@ static InterpretResult run(void) {
                     closure->upvalues[i] = capture_upvalue(frame->slots + index);
                 }
                 else {
-                    closure->upvalues[i] = frame->closure->upvalues[index];
+                    closure->upvalues[i] = frame->function->closure->upvalues[index];
                 }
             }
             break;
@@ -603,10 +609,7 @@ InterpretResult interpret(const char *source) {
     if (function == NULL) return INTERPRET_COMPILE_ERROR;
 
     push(OBJ_VAL(function));
-    ObjClosure *closure = new_closure(function);
-    pop();
-    push(OBJ_VAL(closure));    
-    call(closure, 0);
+    call(function, 0);
 
     return run();
 }

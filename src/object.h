@@ -38,6 +38,7 @@ typedef struct {
     ulong upvalue_count;
     Chunk chunk;
     ObjString *name;
+    struct ObjClosure *closure;
 } ObjFunction;
 
 typedef bool (*NativeFn)(ulong arg_count, Value *args, Value *result);
@@ -63,7 +64,7 @@ typedef struct ObjUpvalue {
     struct ObjUpvalue *next;
 } ObjUpvalue;
 
-typedef struct {
+typedef struct ObjClosure {
     Obj obj;
     ObjFunction *function;
     ObjUpvalue **upvalues;

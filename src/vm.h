@@ -12,7 +12,7 @@
 #define STACK_SIZE_INIT (FRAMES_MAX * UINT8_COUNT)
 
 typedef struct {
-    ObjClosure *closure;
+    ObjFunction *function;
     uint8_t *ip;
     Value *slots;
     ptrdiff_t slots_offset;

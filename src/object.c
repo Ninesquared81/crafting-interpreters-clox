@@ -32,6 +32,7 @@ ObjClosure *new_closure(ObjFunction *function) {
     closure->function = function;
     closure->upvalues = upvalues;
     closure->upvalue_count = function->upvalue_count;
+    function->closure = closure;
     return closure;
 }
 
@@ -40,6 +41,7 @@ ObjFunction *new_function(void) {
     function->arity = 0;
     function->upvalue_count = 0;
     function->name = NULL;
+    function->closure = NULL;
     init_chunk(&function->chunk);
     return function;
 }
