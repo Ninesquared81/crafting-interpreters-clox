@@ -730,7 +730,14 @@ static void function(FunctionType type) {
 
     ObjFunction *function = end_compiler();
     uint32_t function_constant = make_constant(OBJ_VAL(function));
-    uint8_t instruction = (function_constant <= UINT8_MAX) ? OP_CLOSURE : OP_CLOSURE_LONG;
+    uint8_t instruction;
+    if (function->upvalue_count == 0) {
+        // No need for a closure.
+        instruction = (function_constant <= UINT8_MAX) ? OP_CONSTANT : OP_CONSTANT_LONG;        
+        emit_varint_instruction(instruction, function_constant);
+        return;
+    }
+    instruction = (function_constant <= UINT8_MAX) ? OP_CLOSURE : OP_CLOSURE_LONG;
     emit_varint_instruction(instruction, function_constant);
 
     for (ulong i = 0; i < function->upvalue_count; ++i) {
