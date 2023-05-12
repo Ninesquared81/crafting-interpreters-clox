@@ -86,9 +86,9 @@
 0009    | OP_DEFINE_GLOBAL 2 'set_x' 1
 0012    4 OP_NIL
 0013    | OP_DEFINE_GLOBAL 3 'set_y' 1
-0016   26 OP_CONSTANT      5 '<fn Vec2D>'
+0016   26 OP_CLOSURE          5 <fn Vec2D>
 0018    | OP_DEFINE_GLOBAL 4 'Vec2D' 0
-0021   36 OP_CONSTANT      7 '<fn add>'
+0021   36 OP_CLOSURE          7 <fn add>
 0023    | OP_DEFINE_GLOBAL 6 'add' 0
 0026   38 OP_GET_GLOBAL    4 'Vec2D'
 0028    | OP_CONSTANT      9 '4'
