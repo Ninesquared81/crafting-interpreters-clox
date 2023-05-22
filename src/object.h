@@ -25,6 +25,8 @@ typedef enum {
     OBJ_NATIVE,
     OBJ_STRING,
     OBJ_UPVALUE,
+
+    OBJ_TYPE_COUNT  // Must be last element.
 } ObjType;
 
 struct Obj {
@@ -84,4 +86,5 @@ static inline bool is_obj_type(Value value, ObjType type) {
     return IS_OBJ(value) && AS_OBJ(value)->type == type;
 }
 
+extern const char *const obj_type_names[];
 #endif

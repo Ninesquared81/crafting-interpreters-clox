@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -70,6 +71,8 @@ static void define_native(const char *name, ulong arity, NativeFn function) {
 void init_vm(void) {
     init_stack();
     vm.objects = NULL;
+    vm.bytes_allocated = 0;
+    vm.next_gc = 1024 * 1024;
 
     vm.grey_count = 0;
     vm.grey_capacity = 0;
@@ -95,12 +98,21 @@ void free_vm(void) {
 }
 
 void push(Value value) {
-    if (vm.stack == NULL || vm.stack_top >= vm.stack + vm.stack_capacity) {
+    // NOTE: Null check removed since init_stack() pre-allocates some stack slots.
+    // If vm.stack == NULL, this condition is invalid.
+    assert(vm.stack != NULL);
+    if (vm.stack_top >= vm.stack + vm.stack_capacity) {
         size_t old_capacity = vm.stack_capacity;
         vm.stack_capacity = GROW_CAPACITY(old_capacity);
+        size_t growth_delta = vm.stack_capacity - old_capacity;
+        if (IS_OBJ(value) && vm.bytes_allocated + growth_delta * sizeof(Value) > vm.next_gc) {
+            // Since the stack is dynamically grown, push() can trigger the GC.
+            // To avoid the pushed value being collected, we explicitly mark it here.
+            AS_OBJ(value)->is_marked = true;
+        }
         vm.stack = GROW_ARRAY(Value, vm.stack, old_capacity, vm.stack_capacity);
         vm.stack_top = vm.stack + old_capacity;
-
+        
         // Make sure slots pointers point into the new allocation.
         // Note: We have to save the offset and use it here, since at this point the slots pointer is invalid.
         for (CallFrame *frame = vm.frames; frame < vm.frames + vm.frame_count; ++frame) {
@@ -258,8 +270,8 @@ static bool is_falsey(Value value) {
 }
 
 static void concatenate(void) {
-    ObjString *b = AS_STRING(pop());
-    ObjString *a = AS_STRING(pop());
+    ObjString *b = AS_STRING(peek(0));
+    ObjString *a = AS_STRING(peek(1));
     int length = a->length + b->length;
     char *chars = ALLOCATE(char, length + 1);
     memcpy(chars, a->chars, a->length);
@@ -267,6 +279,8 @@ static void concatenate(void) {
     chars[length] = '\0';
 
     ObjString *result = take_string(chars, length);
+    pop();
+    pop();
     push(OBJ_VAL(result));
 }
 

@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -13,6 +14,16 @@
 #define FROM_STRING_LITERAL(string_literal) \
     copy_string(string_literal, sizeof string_literal - 1)
 
+const char *const obj_type_names[] = {
+    [OBJ_CLOSURE] = "OBJ_CLOSURE",
+    [OBJ_FUNCTION] = "OBJ_FUNCTION",
+    [OBJ_NATIVE] = "OBJ_NATIVE",
+    [OBJ_STRING] = "OBJ_STRING",
+    [OBJ_UPVALUE] = "OBJ_UPVALUE",
+};
+
+static_assert(sizeof obj_type_names / sizeof obj_type_names[0] == OBJ_TYPE_COUNT);
+
 static Obj *allocate_object(size_t size, ObjType type) {
     Obj *object = (Obj *)reallocate(NULL, 0, size);
     object->type = type;
@@ -22,7 +33,7 @@ static Obj *allocate_object(size_t size, ObjType type) {
     vm.objects = object;
 
 #ifdef DEBUG_LOG_GC
-    printf("%p free type %d\n", (void*)object, object->type);
+    printf("%p free type %d (%s)\n", (void*)object, object->type, obj_type_names[object->type]);
 #endif
 
     return object;
@@ -62,7 +73,11 @@ static ObjString *allocate_string(char *chars, int length, uint32_t hash) {
     string->length = length;
     string->chars = chars;
     string->hash = hash;
+
+    push(OBJ_VAL(string));
     table_set(&vm.strings, STRING_KEY(string), NIL_VAL);
+    pop();
+
     return string;
 }
 
@@ -169,6 +184,8 @@ void print_object(Value value) {
         break;
     case OBJ_UPVALUE:
         printf("upvalue");
+        break;
+    default:
         break;
     }
 }

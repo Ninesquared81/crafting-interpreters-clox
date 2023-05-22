@@ -3,6 +3,7 @@
 #include "chunk.h"
 #include "memory.h"
 #include "line.h"
+#include "vm.h"
 
 
 void init_chunk(Chunk *chunk) {
@@ -49,7 +50,9 @@ uint32_t add_constant(Chunk *chunk, Value value) {
     ValueArray *constants = &chunk->constants;
     uint32_t index = find_index(constants, value);
     if (index >= constants->count) {
+        push(value);
         write_value_array(constants, value);
+        pop();
     }
     return index;
 }

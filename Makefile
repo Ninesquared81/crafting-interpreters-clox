@@ -21,6 +21,7 @@ rebuild: clean
 bin/vm.o : src/natives.h src/chunk.h
 bin/debug.o : src/chunk.h
 bin/compiler.o : src/scanner.h src/chunk.h
+bin/object.o : src/object.h
 
 bin/%.o : src/%.c src/common.h
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
