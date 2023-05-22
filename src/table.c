@@ -158,3 +158,37 @@ ObjString *table_find_string(Table *table, const char *chars, int length, uint32
         index = (index + 1) % table->capacity;
     }
 }
+
+Value key_as_value(Key key) {
+    switch (key.type) {
+    case KEY_STRING:
+        return OBJ_VAL(key.as.string);
+    case KEY_NUMBER:
+        return NUMBER_VAL(key.as.number);
+    case KEY_BOOL:
+        return BOOL_VAL(key.as.boolean);
+    case KEY_NIL:
+        return NIL_VAL;
+    default:  // Dummy key types.
+        return NIL_VAL;
+    }
+}
+
+void table_remove_white(Table *table) {
+    for (int i = 0; i < table->capacity; ++i) {
+        Entry *entry = &table->entries[i];
+        if (IS_STRING_KEY(entry->key) && AS_OBJ(key_as_value(entry->key))->is_marked) {
+            table_delete(table, entry->key);
+        }
+    }
+}
+
+void mark_table(Table *table) {
+    for (int i = 0; i < table->capacity; ++i) {
+        Entry *entry = &table->entries[i];
+        if (IS_STRING_KEY(entry->key)) {
+            mark_object(AS_OBJ(key_as_value(entry->key)));
+        }
+        mark_value(entry->value);
+    }
+}

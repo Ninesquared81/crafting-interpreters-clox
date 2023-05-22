@@ -16,9 +16,15 @@
 static Obj *allocate_object(size_t size, ObjType type) {
     Obj *object = (Obj *)reallocate(NULL, 0, size);
     object->type = type;
+    object->is_marked = false;
 
     object->next = vm.objects;
     vm.objects = object;
+
+#ifdef DEBUG_LOG_GC
+    printf("%p free type %d\n", (void*)object, object->type);
+#endif
+
     return object;
 }
 
