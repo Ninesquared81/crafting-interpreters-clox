@@ -104,8 +104,7 @@ void push(Value value) {
     if (vm.stack_top >= vm.stack + vm.stack_capacity) {
         size_t old_capacity = vm.stack_capacity;
         vm.stack_capacity = GROW_CAPACITY(old_capacity);
-        size_t growth_delta = vm.stack_capacity - old_capacity;
-        if (IS_OBJ(value) && vm.bytes_allocated + growth_delta * sizeof(Value) > vm.next_gc) {
+        if (IS_OBJ(value)) {
             // Since the stack is dynamically grown, push() can trigger the GC.
             // To avoid the pushed value being collected, we explicitly mark it here.
             AS_OBJ(value)->is_marked = true;
@@ -302,6 +301,7 @@ static InterpretResult run(void) {
 #define BINARY_OP(value_type, op)                               \
     do {                                                        \
         if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {       \
+            frame->ip = ip;                                     \
             runtime_error("Operands must be numbers.");         \
             return INTERPRET_RUNTIME_ERROR;                     \
         }                                                       \
@@ -343,6 +343,7 @@ static InterpretResult run(void) {
             ObjString *name = READ_STRING();
             Value value;
             if (!table_get(&vm.globals, STRING_KEY(name), &value)) {
+                frame->ip = ip;
                 runtime_error("Undefined variable '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
@@ -353,6 +354,7 @@ static InterpretResult run(void) {
             ObjString *name = READ_STRING_LONG();
             Value value;
             if (!table_get(&vm.globals, STRING_KEY(name), &value)) {
+                frame->ip = ip;
                 runtime_error("Undefined variable '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
@@ -411,11 +413,13 @@ static InterpretResult run(void) {
         case OP_SET_GLOBAL_LONG: {
             ObjString *name = READ_STRING_LONG();
             if (set_check(&vm.immutable_globals, STRING_KEY(name))) {
+                frame->ip = ip;
                 runtime_error("Cannot assign to a val.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             if (table_set(&vm.globals, STRING_KEY(name), peek(0))) {
                 table_delete(&vm.globals, STRING_KEY(name));
+                frame->ip = ip;
                 runtime_error("Undefined variable '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
@@ -477,6 +481,7 @@ static InterpretResult run(void) {
                 push(NUMBER_VAL(a + b));
             }
             else {
+                frame->ip = ip;
                 runtime_error("Operands must be two numbers or two strings.");
                 return INTERPRET_RUNTIME_ERROR;
             }
@@ -496,6 +501,7 @@ static InterpretResult run(void) {
             break;
         case OP_NEGATE:
             if (!IS_NUMBER(peek(0))) {
+                frame->ip = ip;
                 runtime_error("Operand must be a number.");
                 return INTERPRET_RUNTIME_ERROR;
             }
@@ -504,6 +510,7 @@ static InterpretResult run(void) {
         case OP_INPUT: {
             char buf[INPUT_MAX];
             if (fgets(buf, INPUT_MAX, stdin) == NULL) {
+                frame->ip = ip;
                 runtime_error("Error reading from stdin.");
                 return INTERPRET_RUNTIME_ERROR;
             }
