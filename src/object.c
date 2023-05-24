@@ -33,7 +33,7 @@ static Obj *allocate_object(size_t size, ObjType type) {
     vm.objects = object;
 
 #ifdef DEBUG_LOG_GC
-    printf("%p free type %d (%s)\n", (void*)object, object->type, obj_type_names[object->type]);
+    printf("%p allocate %zu for type %d (%s)\n", (void*)object, size, object->type, obj_type_names[object->type]);
 #endif
 
     return object;
