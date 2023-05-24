@@ -14,7 +14,7 @@
 void *reallocate(void *pointer, size_t old_size, size_t new_size) {
     vm.bytes_allocated += new_size - old_size;
     if (new_size > old_size) {
-#ifdef DEBIG_STRESS_GC
+#ifdef DEBUG_STRESS_GC
         collect_garbage();
 #endif
 
