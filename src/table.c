@@ -177,7 +177,7 @@ Value key_as_value(Key key) {
 void table_remove_white(Table *table) {
     for (int i = 0; i < table->capacity; ++i) {
         Entry *entry = &table->entries[i];
-        if (IS_STRING_KEY(entry->key) && AS_OBJ(key_as_value(entry->key))->is_marked) {
+        if (IS_STRING_KEY(entry->key) && !AS_OBJ(key_as_value(entry->key))->is_marked) {
             table_delete(table, entry->key);
         }
     }
