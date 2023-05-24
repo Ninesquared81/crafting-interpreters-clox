@@ -469,8 +469,10 @@ static InterpretResult run(void) {
             break;
         case OP_ADD: {
             if (IS_STRING(peek(0)) || IS_STRING(peek(1))) {
-                ObjString *a = to_string(pop());
-                ObjString *b = to_string(pop());
+                ObjString *a = to_string(peek(0));
+                ObjString *b = to_string(peek(1));
+                pop();
+                pop();
                 push(OBJ_VAL((Obj *)b));
                 push(OBJ_VAL((Obj *)a));
                 concatenate();
