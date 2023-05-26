@@ -622,6 +622,14 @@ static InterpretResult run(void) {
             ip = frame->ip;
             break;
         }
+        case OP_CLASS: {
+            push(OBJ_VAL(new_class(READ_STRING())));
+            break;
+        }
+        case OP_CLASS_LONG: {
+            push(OBJ_VAL(new_class(READ_STRING_LONG())));
+            break;
+        }
         }
     }
 

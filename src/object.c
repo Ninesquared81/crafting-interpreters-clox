@@ -15,6 +15,7 @@
     copy_string(string_literal, sizeof string_literal - 1)
 
 const char *const obj_type_names[] = {
+    [OBJ_CLASS] = "OBJ_CLASS",
     [OBJ_CLOSURE] = "OBJ_CLOSURE",
     [OBJ_FUNCTION] = "OBJ_FUNCTION",
     [OBJ_NATIVE] = "OBJ_NATIVE",
@@ -22,7 +23,9 @@ const char *const obj_type_names[] = {
     [OBJ_UPVALUE] = "OBJ_UPVALUE",
 };
 
-static_assert(sizeof obj_type_names / sizeof obj_type_names[0] == OBJ_TYPE_COUNT);
+#define ARRAY_COUNT 6
+static_assert(ARRAY_COUNT == OBJ_TYPE_COUNT);
+#undef ARRAY_COUNT
 
 static Obj *allocate_object(size_t size, ObjType type) {
     Obj *object = (Obj *)reallocate(NULL, 0, size);
@@ -37,6 +40,12 @@ static Obj *allocate_object(size_t size, ObjType type) {
 #endif
 
     return object;
+}
+
+ObjClass *new_class(ObjString *name) {
+    ObjClass *class = ALLOCATE_OBJ(ObjClass, OBJ_CLASS);
+    class->name = name;
+    return class;
 }
 
 ObjClosure *new_closure(ObjFunction *function) {
@@ -170,6 +179,9 @@ static void print_function(ObjFunction *function) {
 
 void print_object(Value value) {
     switch (OBJ_TYPE(value)) {
+    case OBJ_CLASS:
+        printf("%s", AS_CLASS(value)->name->chars);
+        break;
     case OBJ_CLOSURE:
         print_function(AS_CLOSURE(value)->function);
         break;
