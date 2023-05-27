@@ -181,6 +181,11 @@ static bool call_native(ObjNative *native, ulong arg_count) {
 static bool call_value(Value callee, ulong arg_count) {
     if (IS_OBJ(callee)) {
         switch (OBJ_TYPE(callee)) {
+        case OBJ_CLASS: {
+            ObjClass *class = AS_CLASS(callee);
+            vm.stack_top[-(long long)arg_count - 1] = OBJ_VAL(new_instance(class));
+            return true;
+        }
         case OBJ_CLOSURE: {
             ObjClosure *closure = AS_CLOSURE(callee);
             return call(closure->function, closure, arg_count);

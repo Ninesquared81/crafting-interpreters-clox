@@ -18,12 +18,13 @@ const char *const obj_type_names[] = {
     [OBJ_CLASS] = "OBJ_CLASS",
     [OBJ_CLOSURE] = "OBJ_CLOSURE",
     [OBJ_FUNCTION] = "OBJ_FUNCTION",
+    [OBJ_INSTANCE] = "OBJ_INSTANCE",
     [OBJ_NATIVE] = "OBJ_NATIVE",
     [OBJ_STRING] = "OBJ_STRING",
     [OBJ_UPVALUE] = "OBJ_UPVALUE",
 };
 
-#define ARRAY_COUNT 6
+#define ARRAY_COUNT 7
 static_assert(ARRAY_COUNT == OBJ_TYPE_COUNT);
 #undef ARRAY_COUNT
 
@@ -68,6 +69,13 @@ ObjFunction *new_function(void) {
     function->name = NULL;
     init_chunk(&function->chunk);
     return function;
+}
+
+ObjInstance *new_instance(ObjClass *class) {
+    ObjInstance *instance = ALLOCATE_OBJ(ObjInstance, OBJ_INSTANCE);
+    instance->class = class;
+    init_table(&instance->fields);
+    return instance;
 }
 
 ObjNative *new_native(NativeFn function, ulong arity) {
@@ -184,6 +192,9 @@ void print_object(Value value) {
         break;
     case OBJ_CLOSURE:
         print_function(AS_CLOSURE(value)->function);
+        break;
+    case OBJ_INSTANCE:
+        printf("%s instance", AS_INSTANCE(value)->class->name->chars);
         break;
     case OBJ_FUNCTION:
         print_function(AS_FUNCTION(value));
