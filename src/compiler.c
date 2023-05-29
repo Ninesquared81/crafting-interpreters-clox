@@ -179,7 +179,15 @@ static uint32_t make_constant(Value value) {
     return constant;
 }
 
-static void emit_varint_instruction(uint8_t instruction, uint32_t operand) {
+static void emit_varint_instruction(OpCode instruction, uint32_t operand) {
+    // Implementation Note:
+    // This function relies on the fact that OP_x + 1 == OP_x_LONG.
+    assert(IS_LONG_INSTRUCTION(instruction + 1));
+
+    if (operand > UINT8_MAX) {
+        instruction++;  // Long version of instruction.
+    }
+
     // Emit opcode.
     emit_byte(instruction);
     if (IS_LONG_INSTRUCTION(instruction)) {
@@ -193,9 +201,7 @@ static void emit_varint_instruction(uint8_t instruction, uint32_t operand) {
 
 static void emit_constant(Value value) {
     uint32_t constant = make_constant(value);
-    uint8_t instruction = (constant <= UINT8_MAX) ? OP_CONSTANT : OP_CONSTANT_LONG;
-
-    emit_varint_instruction(instruction, constant);
+    emit_varint_instruction(OP_CONSTANT, constant);
 }
 
 static void emit_popn(uint32_t pop_count) {
@@ -207,8 +213,7 @@ static void emit_popn(uint32_t pop_count) {
         return;
     }
     
-    uint8_t instruction = (pop_count <= UINT8_MAX) ? OP_POPN : OP_POPN_LONG;
-    emit_varint_instruction(instruction, pop_count);
+    emit_varint_instruction(OP_POPN, pop_count);
 }    
 
 
@@ -458,8 +463,7 @@ static void define_variable(uint32_t global, bool is_mutable) {
         return;
     }
     
-    uint8_t instruction = (global <= UINT8_MAX) ? OP_DEFINE_GLOBAL : OP_DEFINE_GLOBAL_LONG;
-    emit_varint_instruction(instruction, global);
+    emit_varint_instruction(OP_DEFINE_GLOBAL, global);
     emit_byte(is_mutable);
 }
 
@@ -579,17 +583,17 @@ static void named_variable(Token name, bool can_assign) {
 
     if (arg != (unsigned)-1) {
         is_local = true;
-        get_op = (arg <= UINT8_MAX) ? OP_GET_LOCAL : OP_GET_LOCAL_LONG;
-        set_op = (arg <= UINT8_MAX) ? OP_SET_LOCAL : OP_SET_LOCAL_LONG;
+        get_op = OP_GET_LOCAL;
+        set_op = OP_SET_LOCAL;
     }
     else if ((arg = resolve_upvalue(current, &name)) != (unsigned)-1) {
-        get_op = (arg <= UINT8_MAX) ? OP_GET_UPVALUE : OP_GET_UPVALUE_LONG;
-        set_op = (arg <= UINT8_MAX) ? OP_SET_UPVALUE : OP_SET_UPVALUE_LONG;
+        get_op = OP_GET_UPVALUE;
+        set_op = OP_SET_UPVALUE;
     }
     else {
         arg = identifier_constant(&name);
-        get_op = (arg <= UINT8_MAX) ? OP_GET_GLOBAL : OP_GET_GLOBAL_LONG;
-        set_op = (arg <= UINT8_MAX) ? OP_SET_GLOBAL : OP_SET_GLOBAL_LONG;
+        get_op = OP_GET_GLOBAL;
+        set_op = OP_SET_GLOBAL;
     }
 
     if (can_assign && match(TOKEN_EQUAL)) {
@@ -730,15 +734,12 @@ static void function(FunctionType type) {
 
     ObjFunction *function = end_compiler();
     uint32_t function_constant = make_constant(OBJ_VAL(function));
-    uint8_t instruction;
     if (function->upvalue_count == 0) {
         // No need for a closure.
-        instruction = (function_constant <= UINT8_MAX) ? OP_CONSTANT : OP_CONSTANT_LONG;        
-        emit_varint_instruction(instruction, function_constant);
+        emit_varint_instruction(OP_CONSTANT, function_constant);
         return;
     }
-    instruction = (function_constant <= UINT8_MAX) ? OP_CLOSURE : OP_CLOSURE_LONG;
-    emit_varint_instruction(instruction, function_constant);
+    emit_varint_instruction(OP_CLOSURE, function_constant);
 
     for (ulong i = 0; i < function->upvalue_count; ++i) {
         uint32_t index = compiler.upvalues[i].index;
@@ -758,7 +759,7 @@ static void class_declaration(void) {
     uint32_t name_constant = identifier_constant(&parser.previous);
     declare_variable(false);
 
-    emit_varint_instruction((name_constant <= UINT8_MAX) ? OP_CLASS : OP_CLASS_LONG, name_constant);
+    emit_varint_instruction(OP_CLASS, name_constant);
     define_variable(name_constant, false);
 
     consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
@@ -909,18 +910,15 @@ static void input_statement(void) {
     consume(TOKEN_IDENTIFIER, "Expect variable name after 'input'.");
     Token *name = &parser.previous;
     uint32_t arg = resolve_local(current, name);
-    uint8_t set_op, set_long_op;
+    uint8_t set_op;
     if (arg != (unsigned)-1) {
         set_op = OP_SET_LOCAL;
-        set_long_op = OP_SET_LOCAL_LONG;
     }
     else {
         arg = identifier_constant(name);
         set_op = OP_SET_GLOBAL;
-        set_long_op = OP_SET_GLOBAL_LONG;
     }
-    uint8_t instruction = (arg <= UINT8_MAX) ? set_op : set_long_op;
-    emit_varint_instruction(instruction, arg);
+    emit_varint_instruction(set_op, arg);
     
     consume(TOKEN_SEMICOLON, "Expect ';' after variable name.");
 }
