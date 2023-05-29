@@ -516,8 +516,20 @@ static void binary(bool can_assign) {
 static void call(bool can_assign) {
     (void)can_assign;
     uint32_t arg_count = argument_list();
-    uint8_t instruction = (arg_count <= UINT8_MAX) ? OP_CALL : OP_CALL_LONG;
-    emit_varint_instruction(instruction, arg_count);
+    emit_varint_instruction(OP_CALL, arg_count);
+}
+
+static void dot(bool can_assign) {
+    consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
+    uint32_t name = identifier_constant(&parser.previous);
+
+    if (can_assign && match(TOKEN_EQUAL)) {
+        expression();
+        emit_varint_instruction(OP_SET_PROPERTY, name);
+    }
+    else {
+        emit_varint_instruction(OP_GET_PROPERTY, name);
+    }
 }
 
 static void conditional(bool can_assign) {
@@ -634,7 +646,7 @@ ParseRule rules[] = {
     [TOKEN_RIGHT_BRACE]   = {NULL,       NULL,        PREC_NONE},
     [TOKEN_COLON]         = {NULL,       NULL,        PREC_NONE},
     [TOKEN_COMMA]         = {NULL,       NULL,        PREC_NONE},
-    [TOKEN_DOT]           = {NULL,       NULL,        PREC_NONE},
+    [TOKEN_DOT]           = {NULL,       dot,         PREC_CALL},
     [TOKEN_MINUS]         = {unary,      binary,      PREC_TERM},
     [TOKEN_PLUS]          = {NULL,       binary,      PREC_TERM},
     [TOKEN_QUESTION_MARK] = {NULL,       conditional, PREC_CONDITIONAL},
