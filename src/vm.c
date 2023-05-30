@@ -522,6 +522,34 @@ static InterpretResult run(void) {
             push(value);
             break;
         }
+        case OP_DEL_PROPERTY: {
+            if (!IS_INSTANCE(peek(0))) {
+                runtime_error("Only instances havve fields.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            ObjInstance *instance = AS_INSTANCE(peek(0));
+            ObjString *name = READ_STRING();
+            if (!table_delete(&instance->fields, STRING_KEY(name))) {
+                runtime_error("Undefined property '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+        }
+        case OP_DEL_PROPERTY_LONG: {
+            if (!IS_INSTANCE(peek(0))) {
+                runtime_error("Only instances havve fields.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            ObjInstance *instance = AS_INSTANCE(peek(0));
+            ObjString *name = READ_STRING_LONG();
+            if (!table_delete(&instance->fields, STRING_KEY(name))) {
+                runtime_error("Undefined property '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+        }
         case OP_EQUAL: {
             Value b = pop();
             Value a = pop();

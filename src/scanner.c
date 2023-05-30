@@ -118,6 +118,7 @@ static TokenType identifier_type(void) {
         }
         break;
     case 'e': return check_keyword(1, 3, "lse", TOKEN_ELSE);
+    case 'd': return check_keyword(1, 2, "el", TOKEN_DEL);
     case 'f':
         if (scanner.current - scanner.start > 1) {
             switch (scanner.start[1]) {

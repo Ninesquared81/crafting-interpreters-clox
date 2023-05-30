@@ -7,6 +7,8 @@
 #define EMPTY_KEY         ((Key){.type = KEY_EMPTY})
 #define TOMBSTONE_KEY     ((Key){.type = KEY_TOMBSTONE})
 
+#define IS_HASHABLE(value) (IS_STRING(value) || !IS_OBJ(value))
+
 #define STRING_KEY(value) ((Key){.type = KEY_STRING, .as.string = (value)})
 #define NUMBER_KEY(value) ((Key){.type = KEY_NUMBER, .as.number = (value)})
 #define BOOL_KEY(value)   ((Key){.type = KEY_BOOL, .as.boolean = (value)})
@@ -50,6 +52,7 @@ typedef struct {
 } Table;
 
 Value key_as_value(Key key);
+Key key_from_value(Value value);
 
 void init_table(Table *table);
 void free_table(Table *table);

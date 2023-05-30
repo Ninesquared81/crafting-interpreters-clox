@@ -7,6 +7,7 @@
 #include "common.h"
 #include "natives.h"
 #include "object.h"
+#include "table.h"
 #include "value.h"
 #include "vm.h"
 
@@ -61,6 +62,80 @@ static bool round_native(ulong arg_count, Value *args, Value *result) {
     return true;
 }
 
+static bool has_property_native(ulong arg_count, Value *args, Value *result) {
+    (void)arg_count;
+    if (!IS_INSTANCE(args[0])) {
+        runtime_error("First argument to has_property() must be an instance.");
+        return false;
+    }
+    ObjInstance *instance = AS_INSTANCE(args[0]);
+    if (!IS_STRING(args[1])) {
+        runtime_error("Second argument to has_property() must be a string.");
+        return false;
+    }
+    ObjString *name = AS_STRING(args[1]);
+    Value dummy;  // Dummy Value to pass to table_get().
+    bool has_property = table_get(&instance->fields, STRING_KEY(name), &dummy);
+    *result = BOOL_VAL(has_property);
+    return true;
+}
+
+static bool remove_property_native(ulong arg_count, Value *args, Value *result) {
+    (void)arg_count;
+    if (!IS_INSTANCE(args[0])) {
+        runtime_error("First argument to remove_property() must be an instance.");
+        return false;
+    }
+    ObjInstance *instance = AS_INSTANCE(args[0]);
+    if (!IS_STRING(args[1])) {
+        runtime_error("Second argument to remove_property() must be a string");
+        return false;
+    }
+    ObjString *name = AS_STRING(args[1]);
+    if (!table_delete(&instance->fields, STRING_KEY(name))) {
+        runtime_error("Undefined property '%s'.", name->chars);
+        return false;
+    }
+    *result = NIL_VAL;
+    return true;
+}
+
+static bool get_property_native(ulong arg_count, Value *args, Value *result) {
+    (void)arg_count;
+    if (!IS_INSTANCE(args[0])) {
+        runtime_error("First argument to get_property() must be an instance.");
+        return false;
+    }
+    ObjInstance *instance = AS_INSTANCE(args[0]);
+    if (!IS_STRING(args[1])) {
+        runtime_error("Second argument to get_property() must be a string");
+        return false;
+    }
+    ObjString *name = AS_STRING(args[1]);
+    if (!table_get(&instance->fields, STRING_KEY(name), result)) {
+        runtime_error("Undefined property '%s'.", name->chars);
+        return false;
+    }
+    return true;
+}
+
+static bool set_property_native(ulong arg_count, Value *args, Value *result) {
+    (void)arg_count;
+    if (!IS_INSTANCE(args[0])) {
+        runtime_error("First argument to set_property() must be an instance.");
+        return false;
+    }
+    ObjInstance *instance = AS_INSTANCE(args[0]);
+    if (!IS_STRING(args[1])) {
+        runtime_error("Second argument to set_property() must be a string");
+        return false;
+    }
+    ObjString *name = AS_STRING(args[1]);
+    table_set(&instance->fields, STRING_KEY(name), args[2]);
+    *result = NIL_VAL;
+    return true;
+}
+
 static bool gets_native(ulong arg_count, Value *args, Value *result) {
     (void)arg_count; (void)args;
     char buf[GETS_MAX];
@@ -91,11 +166,15 @@ static bool puts_native(ulong arg_count, Value *args, Value *result) {
 
 NativeEntry natives[] = {
     {"clock", 0, clock_native},
+    {"get_property", 2, get_property_native},
     {"gets", 0, gets_native},
+    {"has_property", 2, has_property_native},
     {"puts", 1, puts_native},
     {"rand", 0, rand_native},
+    {"remove_property", 2, remove_property_native},
     {"round", 1, round_native},
     {"seedrn", 1, seedrn_native},
+    {"set_property", 3, set_property_native},
 };
 
 void init_natives(void) {

@@ -667,6 +667,7 @@ ParseRule rules[] = {
     [TOKEN_NUMBER]        = {number,     NULL,        PREC_NONE},
     [TOKEN_AND]           = {NULL,       and,         PREC_AND},
     [TOKEN_CLASS]         = {NULL,       NULL,        PREC_NONE},
+    [TOKEN_DEL]           = {NULL,       NULL,        PREC_NONE},
     [TOKEN_ELSE]          = {NULL,       NULL,        PREC_NONE},
     [TOKEN_FALSE]         = {literal,    NULL,        PREC_NONE},
     [TOKEN_FOR]           = {NULL,       NULL,        PREC_NONE},
@@ -778,7 +779,43 @@ static void class_declaration(void) {
     consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
 }
-    
+
+static void del_statement(void) {
+    consume(TOKEN_IDENTIFIER, "Expect identifier after 'del'.");
+    variable(false);
+    if (match(TOKEN_SEMICOLON)) {
+        error("Deleting variables is not supported yet.");
+        return;
+    }
+
+    if (match(TOKEN_LEFT_PAREN)) {
+        call(false);
+    }
+    consume(TOKEN_DOT, "Expect '.' before property in deletion target.");
+    consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
+    uint32_t name = identifier_constant(&parser.previous);
+
+    while (!check(TOKEN_SEMICOLON) && !check(TOKEN_EOF)) {
+        if (match(TOKEN_LEFT_PAREN)) {
+            emit_varint_instruction(OP_GET_PROPERTY, name);
+            call(false);
+            consume(TOKEN_DOT, "Expect '.' after call in deletion target.");
+        }
+        else if (match(TOKEN_DOT)) {
+            emit_varint_instruction(OP_GET_PROPERTY, name);
+        }
+        else {
+            error_at_current("Expect '.', '(' or ';' after identifier in deletion target.");
+        }
+        consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
+        name = identifier_constant(&parser.previous);
+    }
+
+    emit_varint_instruction(OP_DEL_PROPERTY, name);
+
+    consume(TOKEN_SEMICOLON, "Expect ';' after deletion target.");
+}
+
 static void fun_declaration(void) {
     uint32_t global = parse_variable("Expect function name.", false);
     mark_initialized();
@@ -1014,6 +1051,9 @@ static void declaration(void) {
     }
     else if (match(TOKEN_VAL)) {
         var_declaration(false);
+    }
+    else if (match(TOKEN_DEL)) {
+        del_statement();
     }
     else {
         statement();
