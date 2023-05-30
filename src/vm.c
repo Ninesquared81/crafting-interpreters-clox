@@ -550,6 +550,26 @@ static InterpretResult run(void) {
             }
             break;
         }
+        case OP_DEL_GLOBAL: {
+            ObjString *name = READ_STRING();
+            Key key = STRING_KEY(name);
+            set_delete(&vm.immutable_globals, key);
+            if (!table_delete(&vm.globals, key)) {
+                runtime_error("Undefined variable '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+        }
+        case OP_DEL_GLOBAL_LONG: {
+            ObjString *name = READ_STRING_LONG();
+            Key key = STRING_KEY(name);
+            set_delete(&vm.immutable_globals, key);
+            if (!table_delete(&vm.globals, key)) {
+                runtime_error("Undefined variable '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+        }
         case OP_EQUAL: {
             Value b = pop();
             Value a = pop();

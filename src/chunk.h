@@ -21,6 +21,7 @@
      || (opcode) == OP_GET_PROPERTY_LONG        \
      || (opcode) == OP_SET_PROPERTY_LONG        \
      || (opcode) == OP_DEL_PROPERTY_LONG        \
+     || (opcode) == OP_DEL_GLOBAL_LONG          \
         )
 
 typedef enum {
@@ -52,6 +53,8 @@ typedef enum {
     OP_SET_PROPERTY_LONG,
     OP_DEL_PROPERTY,
     OP_DEL_PROPERTY_LONG,
+    OP_DEL_GLOBAL,
+    OP_DEL_GLOBAL_LONG,
     OP_EQUAL,
     OP_GREATER,
     OP_LESS,

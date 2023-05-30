@@ -49,6 +49,7 @@ typedef struct {
     int depth;
     bool is_mutable;
     bool is_captured;
+    bool is_alive;
 } Local;
 
 typedef struct {
@@ -283,6 +284,7 @@ static void init_compiler(Compiler *compiler, FunctionType type) {
     local->depth = 0;
     local->is_mutable = false;
     local->is_captured = false;
+    local->is_alive = true;
     local->name.start = "";
     local->name.length = 0;
 }
@@ -358,6 +360,10 @@ static uint32_t resolve_local(Compiler *compiler, Token *name) {
             if (local->depth == -1) {
                 error("Can't read local variable in its own initializer.");
             }
+            if (!local->is_alive) {
+                // Local version of variable has been deleted; assume non-local.
+                return -1;
+            }
             return local - compiler->locals;
         }
     }
@@ -424,6 +430,7 @@ static void add_local(Token name, bool is_mutable) {
     local->depth = -1;
     local->is_mutable = is_mutable;
     local->is_captured = false;
+    local->is_alive = true;
 }
 
 static void declare_variable(bool is_mutable) {
@@ -780,14 +787,8 @@ static void class_declaration(void) {
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
 }
 
-static void del_statement(void) {
-    consume(TOKEN_IDENTIFIER, "Expect identifier after 'del'.");
+static void delete_property(void) {
     variable(false);
-    if (match(TOKEN_SEMICOLON)) {
-        error("Deleting variables is not supported yet.");
-        return;
-    }
-
     if (match(TOKEN_LEFT_PAREN)) {
         call(false);
     }
@@ -812,6 +813,36 @@ static void del_statement(void) {
     }
 
     emit_varint_instruction(OP_DEL_PROPERTY, name);
+}
+
+static void delete_variable(void) {
+    Token *name = &parser.previous;
+    uint32_t local = resolve_local(current, name);
+
+    if (local == (unsigned)-1) {
+        uint32_t upvalue = resolve_upvalue(current, name);
+        if (upvalue == (unsigned)-1) {
+            // Global.
+            uint32_t global = identifier_constant(name);
+            emit_varint_instruction(OP_DEL_GLOBAL, global);
+            return;
+        }
+        // Upvalue.
+        local = current->upvalues[upvalue].index;
+    }
+    
+    current->locals[local].is_alive = false;
+}
+
+static void del_statement(void) {
+    consume(TOKEN_IDENTIFIER, "Expect identifier after 'del'.");
+    
+    if (check(TOKEN_DOT) || check(TOKEN_LEFT_PAREN)) {
+        delete_property();
+    }
+    else {
+        delete_variable();
+    }
 
     consume(TOKEN_SEMICOLON, "Expect ';' after deletion target.");
 }

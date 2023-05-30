@@ -145,6 +145,10 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return constant_instruction("OP_DEL_PROPERTY", chunk, offset);
     case OP_DEL_PROPERTY_LONG:
         return constant_long_instruction("OP_DEL_PROPERY_LONG", chunk, offset);
+    case OP_DEL_GLOBAL:
+        return constant_instruction("OP_DEL_GLOBAL", chunk, offset);
+    case OP_DEL_GLOBAL_LONG:
+        return constant_long_instruction("OP_DEL_GLOBAL_LONG", chunk, offset);
     case OP_EQUAL:
         return simple_instruction("OP_EQUAL", offset);
     case OP_GREATER:
