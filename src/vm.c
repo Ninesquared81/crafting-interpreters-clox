@@ -522,7 +522,7 @@ static InterpretResult run(void) {
         }
         case OP_DEL_PROPERTY: {
             if (!IS_INSTANCE(peek(0))) {
-                RUNTIME_ERROR("Only instances havve fields.");
+                RUNTIME_ERROR("Only instances have fields.");
                 return INTERPRET_RUNTIME_ERROR;
             }
 
@@ -536,7 +536,7 @@ static InterpretResult run(void) {
         }
         case OP_DEL_PROPERTY_LONG: {
             if (!IS_INSTANCE(peek(0))) {
-                RUNTIME_ERROR("Only instances havve fields.");
+                RUNTIME_ERROR("Only instances have fields.");
                 return INTERPRET_RUNTIME_ERROR;
             }
 
