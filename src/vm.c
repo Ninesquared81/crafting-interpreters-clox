@@ -237,6 +237,13 @@ static void close_upvalues(Value *last) {
     }
 }
 
+static void define_method(ObjString *name) {
+    Value method = peek(0);
+    ObjClass *class = AS_CLASS(peek(1));
+    table_set(&class->methods, name, method);
+    pop();
+}
+
 static Value parse_value(const char *string, int length) {
     // Literals.
     switch (length) {
@@ -740,6 +747,12 @@ static InterpretResult run(void) {
             push(OBJ_VAL(new_class(READ_STRING_LONG())));
             break;
         }
+        case OP_METHOD:
+            define_method(READ_STRING());
+            break;
+        case OP_METHOD_LONG:
+            define_method(READ_STRING_LONG());
+            break;
         }
     }
 

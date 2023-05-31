@@ -22,6 +22,7 @@
      || (opcode) == OP_SET_PROPERTY_LONG        \
      || (opcode) == OP_DEL_PROPERTY_LONG        \
      || (opcode) == OP_DEL_GLOBAL_LONG          \
+     || (opcode) == OP_METHOD_LONG              \
         )
 
 typedef enum {
@@ -77,6 +78,8 @@ typedef enum {
     OP_RETURN,
     OP_CLASS,
     OP_CLASS_LONG,
+    OP_METHOD,
+    OP_METHOD_LONG,
 } OpCode;
 
 typedef struct {

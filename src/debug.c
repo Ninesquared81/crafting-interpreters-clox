@@ -221,6 +221,10 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return constant_instruction("OP_CLASS", chunk, offset);
     case OP_CLASS_LONG:
         return constant_long_instruction("OP_CLASS_LONG", chunk,offset);
+    case OP_METHOD:
+        return constant_instruction("OP_METHOD", chunk, offset);
+    case OP_METHOD_LONG:
+        return constant_long_instruction("OP_METHOD_LONG", chunk, offset);
     default:
         printf("Unknown opcode %d\n", instruction);
         return offset + 1;
