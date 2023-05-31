@@ -293,28 +293,30 @@ static InterpretResult run(void) {
     register uint8_t *ip = frame->ip;
     
 #define READ_BYTE() (*ip++)
-#define READ_BYTES() (ip += 3, (uint32_t)( \
-                      (ip[-3] << 16) ^     \
-                      (ip[-2] << 8)  ^     \
-                      (ip[-1]     )))
+#define READ_BYTES() (ip += 3, (uint32_t)(      \
+                          (ip[-3] << 16) ^      \
+                          (ip[-2] << 8)  ^      \
+                          (ip[-1]     )))
 #define READ_SHORT() (ip += 2, (uint16_t)((ip[-2] << 8) | ip[-1]))
 #define READ_CONSTANT() (frame->function->chunk.constants.values[READ_BYTE()])
 #define READ_CONSTANT_LONG() (frame->function->chunk.constants.values[READ_BYTES()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define READ_STRING_LONG() AS_STRING(READ_CONSTANT_LONG())
 
+#define RUNTIME_ERROR(...) (frame->ip = ip, runtime_error(__VA_ARGS__))
+
 #define BINARY_OP(value_type, op)                               \
     do {                                                        \
         if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {       \
             frame->ip = ip;                                     \
-            runtime_error("Operands must be numbers.");         \
+            RUNTIME_ERROR("Operands must be numbers.");         \
             return INTERPRET_RUNTIME_ERROR;                     \
         }                                                       \
         double b = AS_NUMBER(pop());                            \
         double a = AS_NUMBER(pop());                            \
         push(value_type(a op b));                               \
     } while (false)
-    
+
     for (;;) {
 #ifdef DEBUG_TRACE_EXECUTION
         printf("      ");
@@ -348,8 +350,7 @@ static InterpretResult run(void) {
             ObjString *name = READ_STRING();
             Value value;
             if (!table_get(&vm.globals, STRING_KEY(name), &value)) {
-                frame->ip = ip;
-                runtime_error("Undefined variable '%s'.", name->chars);
+                RUNTIME_ERROR("Undefined variable '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
             push(value);
@@ -359,8 +360,7 @@ static InterpretResult run(void) {
             ObjString *name = READ_STRING_LONG();
             Value value;
             if (!table_get(&vm.globals, STRING_KEY(name), &value)) {
-                frame->ip = ip;
-                runtime_error("Undefined variable '%s'.", name->chars);
+                RUNTIME_ERROR("Undefined variable '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
             push(value);
@@ -405,12 +405,12 @@ static InterpretResult run(void) {
         case OP_SET_GLOBAL: {
             ObjString *name = READ_STRING();
             if (set_check(&vm.immutable_globals, STRING_KEY(name))) {
-                runtime_error("Cannot assign to a val.");
+                RUNTIME_ERROR("Cannot assign to a val.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             if (table_set(&vm.globals, STRING_KEY(name), peek(0))) {
                 table_delete(&vm.globals, STRING_KEY(name));
-                runtime_error("Undefined variable '%s'.", name->chars);
+                RUNTIME_ERROR("Undefined variable '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
@@ -418,14 +418,12 @@ static InterpretResult run(void) {
         case OP_SET_GLOBAL_LONG: {
             ObjString *name = READ_STRING_LONG();
             if (set_check(&vm.immutable_globals, STRING_KEY(name))) {
-                frame->ip = ip;
-                runtime_error("Cannot assign to a val.");
+                RUNTIME_ERROR("Cannot assign to a val.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             if (table_set(&vm.globals, STRING_KEY(name), peek(0))) {
                 table_delete(&vm.globals, STRING_KEY(name));
-                frame->ip = ip;
-                runtime_error("Undefined variable '%s'.", name->chars);
+                RUNTIME_ERROR("Undefined variable '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
@@ -462,7 +460,7 @@ static InterpretResult run(void) {
         }
         case OP_GET_PROPERTY: {
             if (!IS_INSTANCE(peek(0))) {
-                runtime_error("Only instances have properties.");
+                RUNTIME_ERROR("Only instances have properties.");
                 return INTERPRET_RUNTIME_ERROR;
             }
 
@@ -476,12 +474,12 @@ static InterpretResult run(void) {
                 break;
             }
 
-            runtime_error("Undefined property '%s'.", name->chars);
+            RUNTIME_ERROR("Undefined property '%s'.", name->chars);
             return INTERPRET_RUNTIME_ERROR;
         }
         case OP_GET_PROPERTY_LONG: {
             if (!IS_INSTANCE(peek(0))) {
-                runtime_error("Only instances have properties.");
+                RUNTIME_ERROR("Only instances have properties.");
                 return INTERPRET_RUNTIME_ERROR;
             }
 
@@ -495,12 +493,12 @@ static InterpretResult run(void) {
                 break;
             }
 
-            runtime_error("Undefined property '%s'.", name->chars);
+            RUNTIME_ERROR("Undefined property '%s'.", name->chars);
             return INTERPRET_RUNTIME_ERROR;
         }
         case OP_SET_PROPERTY: {
             if (!IS_INSTANCE(peek(1))) {
-                runtime_error("Only instances have fields.");
+                RUNTIME_ERROR("Only instances have fields.");
                 return INTERPRET_RUNTIME_ERROR;
             }
 
@@ -512,7 +510,7 @@ static InterpretResult run(void) {
         }
         case OP_SET_PROPERTY_LONG: {
             if (!IS_INSTANCE(peek(1))) {
-                runtime_error("Only instances have fields.");
+                RUNTIME_ERROR("Only instances have fields.");
                 return INTERPRET_RUNTIME_ERROR;
             }
 
@@ -524,28 +522,28 @@ static InterpretResult run(void) {
         }
         case OP_DEL_PROPERTY: {
             if (!IS_INSTANCE(peek(0))) {
-                runtime_error("Only instances havve fields.");
+                RUNTIME_ERROR("Only instances havve fields.");
                 return INTERPRET_RUNTIME_ERROR;
             }
 
             ObjInstance *instance = AS_INSTANCE(peek(0));
             ObjString *name = READ_STRING();
             if (!table_delete(&instance->fields, STRING_KEY(name))) {
-                runtime_error("Undefined property '%s'.", name->chars);
+                RUNTIME_ERROR("Undefined property '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
         }
         case OP_DEL_PROPERTY_LONG: {
             if (!IS_INSTANCE(peek(0))) {
-                runtime_error("Only instances havve fields.");
+                RUNTIME_ERROR("Only instances havve fields.");
                 return INTERPRET_RUNTIME_ERROR;
             }
 
             ObjInstance *instance = AS_INSTANCE(peek(0));
             ObjString *name = READ_STRING_LONG();
             if (!table_delete(&instance->fields, STRING_KEY(name))) {
-                runtime_error("Undefined property '%s'.", name->chars);
+                RUNTIME_ERROR("Undefined property '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
@@ -555,7 +553,7 @@ static InterpretResult run(void) {
             Key key = STRING_KEY(name);
             set_delete(&vm.immutable_globals, key);
             if (!table_delete(&vm.globals, key)) {
-                runtime_error("Undefined variable '%s'.", name->chars);
+                RUNTIME_ERROR("Undefined variable '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
@@ -565,7 +563,7 @@ static InterpretResult run(void) {
             Key key = STRING_KEY(name);
             set_delete(&vm.immutable_globals, key);
             if (!table_delete(&vm.globals, key)) {
-                runtime_error("Undefined variable '%s'.", name->chars);
+                RUNTIME_ERROR("Undefined variable '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
@@ -598,8 +596,7 @@ static InterpretResult run(void) {
                 push(NUMBER_VAL(a + b));
             }
             else {
-                frame->ip = ip;
-                runtime_error("Operands must be two numbers or two strings.");
+                RUNTIME_ERROR("Operands must be two numbers or two strings.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
@@ -618,8 +615,7 @@ static InterpretResult run(void) {
             break;
         case OP_NEGATE:
             if (!IS_NUMBER(peek(0))) {
-                frame->ip = ip;
-                runtime_error("Operand must be a number.");
+                RUNTIME_ERROR("Operand must be a number.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             push(NUMBER_VAL(-AS_NUMBER(pop())));
@@ -627,8 +623,7 @@ static InterpretResult run(void) {
         case OP_INPUT: {
             char buf[INPUT_MAX];
             if (fgets(buf, INPUT_MAX, stdin) == NULL) {
-                frame->ip = ip;
-                runtime_error("Error reading from stdin.");
+                RUNTIME_ERROR("Error reading from stdin.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             int length = strlen(buf);
@@ -754,6 +749,7 @@ static InterpretResult run(void) {
 #undef READ_CONSTANT
 #undef READ_CONSTANT_LONG
 #undef READ_STRING
+#undef RUNTIME_ERROR
 #undef BINARY_OP
 }
 
