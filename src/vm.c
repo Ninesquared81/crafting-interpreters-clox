@@ -310,12 +310,13 @@ static InterpretResult run(void) {
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define READ_STRING_LONG() AS_STRING(READ_CONSTANT_LONG())
 
-#define RUNTIME_ERROR(...) (frame->ip = ip, runtime_error(__VA_ARGS__))
+#define UPDATE_IP() (frame->ip = ip)
+#define RUNTIME_ERROR(...) (UPDATE_IP(), runtime_error(__VA_ARGS__))
 
 #define BINARY_OP(value_type, op)                               \
     do {                                                        \
         if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {       \
-            frame->ip = ip;                                     \
+            UPDATE_IP();                                     \
             RUNTIME_ERROR("Operands must be numbers.");         \
             return INTERPRET_RUNTIME_ERROR;                     \
         }                                                       \
@@ -666,7 +667,7 @@ static InterpretResult run(void) {
         }
         case OP_CALL: {
             ulong arg_count = READ_BYTE();
-            frame->ip = ip;
+            UPDATE_IP();
             if (!call_value(peek(arg_count), arg_count)) {
                 return INTERPRET_RUNTIME_ERROR;
             }
@@ -676,7 +677,7 @@ static InterpretResult run(void) {
         }
         case OP_CALL_LONG: {
             ulong arg_count = READ_BYTES();
-            frame->ip = ip;
+            UPDATE_IP();
             if (!call_value(peek(arg_count), arg_count)) {
                 return INTERPRET_RUNTIME_ERROR;
             }
@@ -762,6 +763,7 @@ static InterpretResult run(void) {
 #undef READ_CONSTANT
 #undef READ_CONSTANT_LONG
 #undef READ_STRING
+#undef UPDATE_IP
 #undef RUNTIME_ERROR
 #undef BINARY_OP
 }
