@@ -29,6 +29,7 @@ typedef struct {
     Table globals;
     Set immutable_globals;
     Table strings;
+    ObjString *init_string;
     ObjUpvalue *open_upvalues;
 
     size_t bytes_allocated;

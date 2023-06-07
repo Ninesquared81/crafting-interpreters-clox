@@ -82,6 +82,9 @@ void init_vm(void) {
     init_table(&vm.strings);
     init_set(&vm.immutable_globals);
 
+    vm.init_string = NULL;
+    vm.init_string = copy_string("init", 4);
+
     init_natives();  // Sets the seed for rand().
     for (int i = 0; i < NATIVE_COUNT; ++i) {
         define_native(natives[i].name, natives[i].arity, natives[i].function);
@@ -93,7 +96,8 @@ void free_vm(void) {
     free_table(&vm.strings);
     free_set(&vm.immutable_globals);
     free_stack();
-    
+
+    vm.init_string = NULL;
     free_objects();
 }
 
@@ -183,11 +187,21 @@ static bool call_value(Value callee, ulong arg_count) {
         switch (OBJ_TYPE(callee)) {
         case OBJ_BOUND_METHOD: {
             ObjBoundMethod *bound = AS_BOUND_METHOD(callee);
+            vm.stack_top[-(long long)arg_count - 1] = bound->receiver;
             return call(bound->method->function, bound->method, arg_count);
         }
         case OBJ_CLASS: {
             ObjClass *class = AS_CLASS(callee);
             vm.stack_top[-(long long)arg_count - 1] = OBJ_VAL(new_instance(class));
+            Value initializer;
+            if (table_get(&class->methods, STRING_KEY(vm.init_string), &initializer)) {
+                ObjClosure *init_closure = AS_CLOSURE(initializer);
+                return call(init_closure->function, init_closure, arg_count);
+            }
+            if (arg_count != 0) {
+                runtime_error("Expected 0 arguments but got %lu.", arg_count);
+                return false;
+            }
             return true;
         }
         case OBJ_CLOSURE: {

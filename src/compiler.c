@@ -59,6 +59,8 @@ typedef struct {
 
 typedef enum {
     TYPE_FUNCTION,
+    TYPE_INITIALIZER,
+    TYPE_METHOD,
     TYPE_SCRIPT,
 } FunctionType;
 
@@ -76,8 +78,13 @@ typedef struct Compiler {
     LoopStack loops;
 } Compiler;
 
+typedef struct ClassCompiler {
+    struct ClassCompiler *enclosing;
+} ClassCompiler;
+
 Parser parser;
 Compiler *current = NULL;
+ClassCompiler *current_class = NULL;
 
 static Chunk *current_chunk(void) {
     return &current->function->chunk;
@@ -166,7 +173,13 @@ static int emit_jump(uint8_t instruction) {
 }
 
 static void emit_return(void) {
-    emit_byte(OP_NIL);
+    if (current->type == TYPE_INITIALIZER) {
+        emit_bytes(OP_GET_LOCAL, 0);
+    }
+    else {
+        emit_byte(OP_NIL);
+    }
+
     emit_byte(OP_RETURN);
 }
 
@@ -285,8 +298,14 @@ static void init_compiler(Compiler *compiler, FunctionType type) {
     local->is_mutable = false;
     local->is_captured = false;
     local->is_alive = true;
-    local->name.start = "";
-    local->name.length = 0;
+    if (type != TYPE_FUNCTION) {
+        local->name.start = "this";
+        local->name.length = 4;
+    }
+    else {
+        local->name.start = "";
+        local->name.length = 0;
+    }
 }
 
 static void free_compiler(Compiler *compiler) {
@@ -632,6 +651,16 @@ static void variable(bool can_assign) {
     named_variable(parser.previous, can_assign);
 }
 
+static void this(bool can_assign) {
+    (void)can_assign;
+    if (current_class == NULL) {
+        error("Can't use 'this' outside of a class.");
+        return;
+    }
+
+    variable(false);
+}
+
 static void unary(bool can_assign) {
     (void)can_assign;
     TokenType operator_type = parser.previous.type;
@@ -686,7 +715,7 @@ ParseRule rules[] = {
     [TOKEN_PRINT]         = {NULL,       NULL,        PREC_NONE},
     [TOKEN_RETURN]        = {NULL,       NULL,        PREC_NONE},
     [TOKEN_SUPER]         = {NULL,       NULL,        PREC_NONE},
-    [TOKEN_THIS]          = {NULL,       NULL,        PREC_NONE},
+    [TOKEN_THIS]          = {this,       NULL,        PREC_NONE},
     [TOKEN_TRUE]          = {literal,    NULL,        PREC_NONE},
     [TOKEN_VAL]           = {NULL,       NULL,        PREC_NONE},
     [TOKEN_VAR]           = {NULL,       NULL,        PREC_NONE},
@@ -779,7 +808,11 @@ static void method(void) {
     consume(TOKEN_IDENTIFIER, "Expect mathod name.");
     uint32_t constant = identifier_constant(&parser.previous);
 
-    FunctionType type = TYPE_FUNCTION;
+    FunctionType type = TYPE_METHOD;
+    if (parser.previous.length == 4 && memcmp(parser.previous.start, "init", 4) == 0) {
+        type = TYPE_INITIALIZER;
+    }
+
     function(type);
     emit_varint_instruction(OP_METHOD, constant);
 }
@@ -793,6 +826,10 @@ static void class_declaration(void) {
     emit_varint_instruction(OP_CLASS, name_constant);
     define_variable(name_constant, false);
 
+    ClassCompiler class_compiler;
+    class_compiler.enclosing = current_class;
+    current_class = &class_compiler;
+
     named_variable(class_name, false);
     consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
     while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
@@ -800,6 +837,8 @@ static void class_declaration(void) {
     }
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
     emit_byte(OP_POP);
+
+    current_class = current_class->enclosing;
 }
 
 static void delete_property(void) {
@@ -1034,6 +1073,10 @@ static void return_statement(void) {
         emit_return();
     }
     else {
+        if (current->type == TYPE_INITIALIZER) {
+            error("Can't return a values from an initializer.");
+        }
+
         expression();
         consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
         emit_byte(OP_RETURN);
