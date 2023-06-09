@@ -23,6 +23,7 @@
      || (opcode) == OP_DEL_PROPERTY_LONG        \
      || (opcode) == OP_DEL_GLOBAL_LONG          \
      || (opcode) == OP_METHOD_LONG              \
+     || (opcode) == OP_INVOKE_LONG              \
         )
 
 typedef enum {
@@ -72,6 +73,8 @@ typedef enum {
     OP_LOOP,
     OP_CALL,
     OP_CALL_LONG,
+    OP_INVOKE,
+    OP_INVOKE_LONG,
     OP_CLOSURE,
     OP_CLOSURE_LONG,
     OP_CLOSE_UPVALUE,

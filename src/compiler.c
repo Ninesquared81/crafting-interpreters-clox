@@ -194,6 +194,11 @@ static uint32_t make_constant(Value value) {
     return constant;
 }
 
+static void emit_uint24(uint32_t operand) {
+    emit_bytes(operand >> 16, operand >> 8);
+    emit_byte((uint8_t)operand);
+}
+
 static void emit_varint_instruction(OpCode instruction, uint32_t operand) {
     // Implementation Note:
     // This function relies on the fact that OP_x + 1 == OP_x_LONG.
@@ -205,12 +210,14 @@ static void emit_varint_instruction(OpCode instruction, uint32_t operand) {
 
     // Emit opcode.
     emit_byte(instruction);
+
+    // Emit operand.
     if (IS_LONG_INSTRUCTION(instruction)) {
-        // Emit two leading bytes of index.
-        emit_bytes(operand >> 16, operand >> 8);
+        emit_uint24(operand);
     }
-    // Emit final byte.
-    emit_byte((uint8_t)operand);
+    else {
+        emit_byte((uint8_t)operand);
+    }
 }
     
 
@@ -553,6 +560,18 @@ static void dot(bool can_assign) {
     if (can_assign && match(TOKEN_EQUAL)) {
         expression();
         emit_varint_instruction(OP_SET_PROPERTY, name);
+    }
+    else if (match(TOKEN_LEFT_PAREN)) {
+        uint32_t arg_count = argument_list();
+        if (name <= UINT8_MAX && arg_count <= UINT8_MAX) {
+            emit_bytes(OP_INVOKE, name);
+            emit_byte(arg_count);
+        }
+        else {
+            emit_byte(OP_INVOKE_LONG);
+            emit_uint24(name);
+            emit_uint24(arg_count);
+        }
     }
     else {
         emit_varint_instruction(OP_GET_PROPERTY, name);

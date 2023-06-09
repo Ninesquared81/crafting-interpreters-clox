@@ -14,7 +14,7 @@ void disassemble_chunk(Chunk *chunk, const char *name) {
 
 static uint32_t get_uint24(Chunk *chunk, int offset) {
     uint32_t constant = 0;
-    for (int i = 1; i <= 3; ++i) {
+    for (int i = 0; i < 3; ++i) {
         constant <<= 8;
         constant |= chunk->code[offset + i];
     }
@@ -31,7 +31,7 @@ static int define_instruction(const char *name, Chunk *chunk, int offset) {
 }
 
 static int define_long_instruction(const char *name, Chunk *chunk, int offset) {
-    uint32_t constant = get_uint24(chunk, offset);
+    uint32_t constant = get_uint24(chunk, offset + 1);
     uint8_t is_mutable = chunk->code[offset + 4];
     printf("%-16s %d '", name, constant);
     print_value(chunk->constants.values[constant]);
@@ -48,12 +48,30 @@ static int constant_instruction(const char *name, Chunk *chunk, int offset) {
 }
 
 static int constant_long_instruction(const char *name, Chunk *chunk, int offset) {
-    uint32_t constant = get_uint24(chunk, offset);
+    uint32_t constant = get_uint24(chunk, offset + 1);
     printf("%-16s %d '", name, constant);
     print_value(chunk->constants.values[constant]);
     printf("'\n");
     return offset + 4;
 }    
+
+static int invoke_instruction(const char *name, Chunk *chunk, int offset) {
+    uint8_t constant = chunk->code[offset + 1];
+    uint8_t arg_count = chunk->code[offset + 2];
+    printf("%-16s (%d args) %4d '", name, arg_count, constant);
+    print_value(chunk->constants.values[constant]);
+    printf("'\n");
+    return offset + 3;
+}
+
+static int invoke_long_instruction(const char *name, Chunk *chunk, int offset) {
+    uint32_t constant = get_uint24(chunk, offset + 1);
+    uint32_t arg_count = get_uint24(chunk, offset + 4);
+    printf("%-16s (%d args) %4d '", name, arg_count, constant);
+    print_value(chunk->constants.values[constant]);
+    printf("'\n");
+    return offset + 7;
+}
 
 static int simple_instruction(const char *name, int offset) {
     printf("%s\n", name);
@@ -67,7 +85,7 @@ static int byte_instruction(const char *name, Chunk *chunk, int offset) {
 }
 
 static int byte_long_instruction(const char *name, Chunk *chunk, int offset) {
-    uint32_t slot = get_uint24(chunk, offset);
+    uint32_t slot = get_uint24(chunk, offset + 1);
     printf("%-16s %4d\n", name, slot);
     return offset + 4;
 }
@@ -181,6 +199,10 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return byte_instruction("OP_CALL", chunk, offset);
     case OP_CALL_LONG:
         return byte_long_instruction("OP_CALL_LONG", chunk, offset);
+    case OP_INVOKE:
+        return invoke_instruction("OP_INVOKE", chunk, offset);
+    case OP_INVOKE_LONG:
+        return invoke_long_instruction("OP_INVOKE_LONG", chunk, offset);
     case OP_CLOSURE:
     case OP_CLOSURE_LONG: {
         offset++;

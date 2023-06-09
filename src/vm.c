@@ -221,6 +221,35 @@ static bool call_value(Value callee, ulong arg_count) {
     return false;
 }
 
+static bool invoke_from_class(ObjClass *class, ObjString *name, ulong arg_count) {
+    Value method;
+    if (!table_get(&class->methods, STRING_KEY(name), &method)) {
+        runtime_error("Undefined property '%s'.", name->chars);
+        return false;
+    }
+    ObjClosure *closure = AS_CLOSURE(method);
+    return call(closure->function, closure, arg_count);
+}
+
+static bool invoke(ObjString *name, ulong arg_count) {
+    Value receiver = peek(arg_count);
+
+    if (!IS_INSTANCE(receiver)) {
+        runtime_error("Only instances have methods.");
+        return false;
+    }
+
+    ObjInstance *instance = AS_INSTANCE(receiver);
+
+    Value value;
+    if (table_get(&instance->fields, STRING_KEY(name), &value)) {
+        vm.stack_top[-(long long)arg_count - 1] = value;
+        return call_value(value, arg_count);
+    }
+
+    return invoke_from_class(instance->class, name, arg_count);
+}
+
 static bool bind_method(ObjClass *class, ObjString *name) {
     Value method;
     if (!table_get(&class->methods, STRING_KEY(name), &method)) {
@@ -348,6 +377,7 @@ static InterpretResult run(void) {
 #define READ_STRING_LONG() AS_STRING(READ_CONSTANT_LONG())
 
 #define UPDATE_IP() (frame->ip = ip)
+#define RESET_IP() (ip = frame->ip)
 #define RUNTIME_ERROR(...) (UPDATE_IP(), runtime_error(__VA_ARGS__))
 
 #define BINARY_OP(value_type, op)                               \
@@ -715,7 +745,7 @@ static InterpretResult run(void) {
                 return INTERPRET_RUNTIME_ERROR;
             }
             frame = &vm.frames[vm.frame_count - 1];
-            ip = frame->ip;
+            RESET_IP();
             break;
         }
         case OP_CALL_LONG: {
@@ -725,7 +755,29 @@ static InterpretResult run(void) {
                 return INTERPRET_RUNTIME_ERROR;
             }
             frame = &vm.frames[vm.frame_count - 1];
-            ip = frame->ip;
+            RESET_IP();
+            break;
+        }
+        case OP_INVOKE: {
+            ObjString *method = READ_STRING();
+            ulong arg_count = READ_BYTE();
+            if (!invoke(method, arg_count)) {
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            UPDATE_IP();
+            frame = &vm.frames[vm.frame_count - 1];
+            RESET_IP();
+            break;
+        }
+        case OP_INVOKE_LONG: {
+            ObjString *method = READ_STRING_LONG();
+            ulong arg_count = READ_BYTES();
+            if (!invoke(method, arg_count)) {
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            UPDATE_IP();
+            frame = &vm.frames[vm.frame_count - 1];
+            RESET_IP();
             break;
         }
         case OP_CLOSURE: {
@@ -780,7 +832,7 @@ static InterpretResult run(void) {
             vm.stack_top = frame->slots;
             push(result);
             frame = &vm.frames[vm.frame_count - 1];
-            ip = frame->ip;
+            RESET_IP();
             break;
         }
         case OP_CLASS: {
