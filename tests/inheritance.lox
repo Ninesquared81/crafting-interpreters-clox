@@ -1,0 +1,32 @@
+class Hello {
+    init(greetee) {
+        this.greetee = greetee;
+    }
+    greet() {
+        print "Hello, " + this.greetee + "!";
+    }
+}
+
+class HelloWorld < Hello {
+    init() {
+        super.init("World");
+    }
+}
+
+class HelloThere < Hello {
+    init() {
+        super.init("There");
+    }
+    greet() {
+       var method = super.greet;
+       print method;
+       method();
+    }
+}
+
+var hello = Hello("Judith");
+hello.greet();
+hello = HelloWorld();
+hello.greet();
+hello = HelloThere();
+hello.greet();
