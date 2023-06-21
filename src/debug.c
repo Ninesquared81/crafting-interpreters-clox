@@ -167,6 +167,10 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return constant_instruction("OP_DEL_GLOBAL", chunk, offset);
     case OP_DEL_GLOBAL_LONG:
         return constant_long_instruction("OP_DEL_GLOBAL_LONG", chunk, offset);
+    case OP_GET_SUPER:
+        return constant_instruction("OP_GET_SUPER", chunk, offset);
+    case OP_GET_SUPER_LONG:
+        return constant_instruction("OP_GET_SUPER_LONG", chunk, offset);
     case OP_EQUAL:
         return simple_instruction("OP_EQUAL", offset);
     case OP_GREATER:
@@ -203,6 +207,10 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return invoke_instruction("OP_INVOKE", chunk, offset);
     case OP_INVOKE_LONG:
         return invoke_long_instruction("OP_INVOKE_LONG", chunk, offset);
+    case OP_SUPER_INVOKE:
+        return invoke_instruction("OP_SUPER_INVOKE", chunk, offset);
+    case OP_SUPER_INVOKE_LONG:
+        return invoke_long_instruction("OP_SUPER_INVOKE_LONG", chunk, offset);
     case OP_CLOSURE:
     case OP_CLOSURE_LONG: {
         offset++;
@@ -243,6 +251,8 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return constant_instruction("OP_CLASS", chunk, offset);
     case OP_CLASS_LONG:
         return constant_long_instruction("OP_CLASS_LONG", chunk,offset);
+    case OP_INHERIT:
+        return simple_instruction("OP_INHERIT", offset);
     case OP_METHOD:
         return constant_instruction("OP_METHOD", chunk, offset);
     case OP_METHOD_LONG:

@@ -80,6 +80,7 @@ typedef struct Compiler {
 
 typedef struct ClassCompiler {
     struct ClassCompiler *enclosing;
+    bool has_superclass;
 } ClassCompiler;
 
 Parser parser;
@@ -219,7 +220,19 @@ static void emit_varint_instruction(OpCode instruction, uint32_t operand) {
         emit_byte((uint8_t)operand);
     }
 }
-    
+
+static void emit_invoke(OpCode instruction, uint32_t name, uint32_t arg_count) {
+    assert(instruction == OP_INVOKE || instruction == OP_SUPER_INVOKE);
+    if (name <= UINT8_MAX && arg_count <= UINT8_MAX) {
+        emit_bytes(instruction, name);
+        emit_byte(arg_count);
+    }
+    else {
+        emit_byte(instruction + 1);
+        emit_uint24(name);
+        emit_uint24(arg_count);
+    }
+}
 
 static void emit_constant(Value value) {
     uint32_t constant = make_constant(value);
@@ -563,15 +576,7 @@ static void dot(bool can_assign) {
     }
     else if (match(TOKEN_LEFT_PAREN)) {
         uint32_t arg_count = argument_list();
-        if (name <= UINT8_MAX && arg_count <= UINT8_MAX) {
-            emit_bytes(OP_INVOKE, name);
-            emit_byte(arg_count);
-        }
-        else {
-            emit_byte(OP_INVOKE_LONG);
-            emit_uint24(name);
-            emit_uint24(arg_count);
-        }
+        emit_invoke(OP_INVOKE, name, arg_count);
     }
     else {
         emit_varint_instruction(OP_GET_PROPERTY, name);
@@ -670,6 +675,38 @@ static void variable(bool can_assign) {
     named_variable(parser.previous, can_assign);
 }
 
+static Token synthetic_token(const char *text) {
+    Token token;
+    token.start = text;
+    token.length = (int)strlen(text);
+    return token;
+}
+
+static void super(bool can_assign) {
+    (void)can_assign;
+    if (current_class == NULL) {
+        error("Can't use 'super' outside of a class.");
+    }
+    else if (!current_class->has_superclass) {
+        error("Can't use 'super' in a class with no superclass.");
+    }
+
+    consume(TOKEN_DOT, "Expect '.' after 'super'.");
+    consume(TOKEN_IDENTIFIER, "Expect superclass method name.");
+    uint32_t name = identifier_constant(&parser.previous);
+
+    named_variable(synthetic_token("this"), false);
+    if (match(TOKEN_LEFT_PAREN)) {
+        uint32_t arg_count = argument_list();
+        named_variable(synthetic_token("super"), false);
+        emit_invoke(OP_SUPER_INVOKE, name, arg_count);
+    }
+    else {
+        named_variable(synthetic_token("super"), false);
+        emit_varint_instruction(OP_GET_SUPER, name);
+    }
+}
+
 static void this(bool can_assign) {
     (void)can_assign;
     if (current_class == NULL) {
@@ -733,7 +770,7 @@ ParseRule rules[] = {
     [TOKEN_OR]            = {NULL,       or,          PREC_OR},
     [TOKEN_PRINT]         = {NULL,       NULL,        PREC_NONE},
     [TOKEN_RETURN]        = {NULL,       NULL,        PREC_NONE},
-    [TOKEN_SUPER]         = {NULL,       NULL,        PREC_NONE},
+    [TOKEN_SUPER]         = {super,      NULL,        PREC_NONE},
     [TOKEN_THIS]          = {this,       NULL,        PREC_NONE},
     [TOKEN_TRUE]          = {literal,    NULL,        PREC_NONE},
     [TOKEN_VAL]           = {NULL,       NULL,        PREC_NONE},
@@ -846,8 +883,26 @@ static void class_declaration(void) {
     define_variable(name_constant, false);
 
     ClassCompiler class_compiler;
+    class_compiler.has_superclass = false;
     class_compiler.enclosing = current_class;
     current_class = &class_compiler;
+
+    if (match(TOKEN_LESS)) {
+        consume(TOKEN_IDENTIFIER, "Expect superclass name.");
+        variable(false);
+
+        if (identifiers_equal(&class_name, &parser.previous)) {
+            error("A class can't inherit from itself.");
+        }
+
+        begin_scope();
+        add_local(synthetic_token("super"), false);
+        define_variable(0, false);
+
+        named_variable(class_name, false);
+        emit_byte(OP_INHERIT);
+        class_compiler.has_superclass = true;
+    }
 
     named_variable(class_name, false);
     consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
@@ -856,6 +911,10 @@ static void class_declaration(void) {
     }
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
     emit_byte(OP_POP);
+
+    if (class_compiler.has_superclass) {
+        end_scope();
+    }
 
     current_class = current_class->enclosing;
 }

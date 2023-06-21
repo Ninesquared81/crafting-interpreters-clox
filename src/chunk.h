@@ -24,6 +24,8 @@
      || (opcode) == OP_DEL_GLOBAL_LONG          \
      || (opcode) == OP_METHOD_LONG              \
      || (opcode) == OP_INVOKE_LONG              \
+     || (opcode) == OP_GET_SUPER_LONG           \
+     || (opcode) == OP_SUPER_INVOKE_LONG        \
         )
 
 typedef enum {
@@ -57,6 +59,8 @@ typedef enum {
     OP_DEL_PROPERTY_LONG,
     OP_DEL_GLOBAL,
     OP_DEL_GLOBAL_LONG,
+    OP_GET_SUPER,
+    OP_GET_SUPER_LONG,
     OP_EQUAL,
     OP_GREATER,
     OP_LESS,
@@ -75,12 +79,15 @@ typedef enum {
     OP_CALL_LONG,
     OP_INVOKE,
     OP_INVOKE_LONG,
+    OP_SUPER_INVOKE,
+    OP_SUPER_INVOKE_LONG,
     OP_CLOSURE,
     OP_CLOSURE_LONG,
     OP_CLOSE_UPVALUE,
     OP_RETURN,
     OP_CLASS,
     OP_CLASS_LONG,
+    OP_INHERIT,
     OP_METHOD,
     OP_METHOD_LONG,
 } OpCode;
