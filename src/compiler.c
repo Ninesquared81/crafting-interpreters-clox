@@ -100,7 +100,7 @@ static void error_at(Token *token, const char *message) {
         fprintf(stderr, " at end");
     }
     else if (token->type == TOKEN_ERROR) {
-
+        // Nothing.
     }
     else {
         fprintf(stderr, " at '%.*s'", token->length, token->start);
@@ -116,6 +116,11 @@ static void error(const char *message) {
 
 static void error_at_current(const char *message) {
     error_at(&parser.current, message);
+}
+
+static void error_cascading(const char *message) {
+    parser.panic_mode = false;
+    error(message);
 }
 
 static void advance(void) {
@@ -968,16 +973,21 @@ static void delete_variable(void) {
 
 static void del_statement(void) {
     if (match(TOKEN_SUPER)) {
+        void (*error_func)(const char *) = error;
         if (current_class == NULL) {
-            error("Can't use 'super' outide of a class.");
+            error_func("Can't use 'super' outide of a class.");
+            error_func = error_cascading;
         }
         else if (!current_class->has_superclass) {
             error("Can't use 'super' in a class with no superclass.");
+            error_func = error_cascading;
         }
+
         if (!check(TOKEN_DOT)) {
-            error("Expect '.' after 'super'.");
+            error_func("Expect '.' after 'super'.");
+            error_func = error_cascading;
         }
-        error("Can't delete a superclass method.");
+        error_func("Can't use 'super' in a del statement.");
     }
     else if (match(TOKEN_THIS)) {
         if (current_class == NULL) {
