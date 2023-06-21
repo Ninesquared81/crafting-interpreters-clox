@@ -967,12 +967,34 @@ static void delete_variable(void) {
 }
 
 static void del_statement(void) {
-    consume(TOKEN_IDENTIFIER, "Expect identifier after 'del'.");
+    if (match(TOKEN_SUPER)) {
+        if (current_class == NULL) {
+            error("Can't use 'super' outide of a class.");
+        }
+        else if (!current_class->has_superclass) {
+            error("Can't use 'super' in a class with no superclass.");
+        }
+        if (!check(TOKEN_DOT)) {
+            error("Expect '.' after 'super'.");
+        }
+        error("Can't delete a superclass method.");
+    }
+    else if (match(TOKEN_THIS)) {
+        if (current_class == NULL) {
+            error("Can't use 'this' outside of a class");
+        }
+    }
+    else {
+        consume(TOKEN_IDENTIFIER, "Expect identifier after 'del'.");
+    }
     
     if (check(TOKEN_DOT) || check(TOKEN_LEFT_PAREN)) {
         delete_property();
     }
     else {
+        if (parser.previous.type == TOKEN_THIS) {
+            error("Can't delete instances inside their own methods.");
+        }
         delete_variable();
     }
 
