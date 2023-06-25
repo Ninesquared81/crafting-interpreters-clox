@@ -45,6 +45,12 @@ static Obj *allocate_object(size_t size, ObjType type) {
     return object;
 }
 
+ObjArray *new_array(void) {
+    ObjArray *array = ALLOCATE_OBJ(ObjArray, OBJ_ARRAY);
+    init_value_array(&array->elements);
+    return array;
+}
+
 ObjBoundMethod *new_bound_method(Value receiver, ObjClosure *method) {
     ObjBoundMethod *bound = ALLOCATE_OBJ(ObjBoundMethod, OBJ_BOUND_METHOD);
     bound->receiver = receiver;
@@ -187,6 +193,21 @@ ObjUpvalue *new_upvalue(Value *slot) {
     return upvalue;
 }
 
+static void print_array(ObjArray *array) {
+    printf("[");
+    size_t count = array->elements.count;
+    Value *values = array->elements.values;
+    if (count >= 1) {
+        print_value(values[0]);
+    }
+    for (size_t i = 1; i < count; ++i) {
+        printf(", ");
+        print_value(values[i]);
+    }
+    printf("]");
+}
+
+
 static void print_function(ObjFunction *function) {
     if (function->name == NULL) {
         printf("<script>");
@@ -197,6 +218,9 @@ static void print_function(ObjFunction *function) {
 
 void print_object(Value value) {
     switch (OBJ_TYPE(value)) {
+    case OBJ_ARRAY:
+        print_array(AS_ARRAY(value));
+        break;
     case OBJ_BOUND_METHOD:
         print_function(AS_BOUND_METHOD(value)->method->function);
         break;

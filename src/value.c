@@ -16,12 +16,81 @@ void init_value_array(ValueArray *array) {
 
 void write_value_array(ValueArray *array, Value value) {
     if (array->capacity < array->count + 1) {
-        uint32_t old_capacity = array->capacity;
+        size_t old_capacity = array->capacity;
         array->capacity = GROW_CAPACITY(old_capacity);
         array->values = GROW_ARRAY(Value, array->values, old_capacity,  array->capacity);
     }
 
     array->values[array->count++] = value;
+}
+
+bool insert_value_array(ValueArray *array, size_t index, Value value) {
+    if (index >= array->count) {
+        return false;
+    }
+    
+    if (array->capacity < array->count + 1) {
+        size_t old_capacity = array->capacity;
+        array->capacity = GROW_CAPACITY(old_capacity);
+        array->values = GROW_ARRAY(Value, array->values, old_capacity,  array->capacity);
+    }
+
+    for (Value *vp = &array->values[array->count]; vp >= array->values + index; --vp) {
+        vp[1] = *vp;
+    }
+    array->values[index] = value;
+    ++array->count;
+    return true;
+}
+
+bool remove_value_array(ValueArray *array, size_t index, Value *value) {
+    if (index >= array->count) {
+        return false;
+    }
+
+    *value = array->values[index];
+    for (Value *vp = &array->values[index]; vp < &array->values[array->count]) {
+        *vp = vp[1];
+    }
+    --array->count;
+    return true;
+}
+
+bool get_value_array(const ValueArray *array, size_t index, Value *value) {
+    if (index >= array->count) {
+        return false;
+    }
+
+    *value = array->values[index];
+    return true;
+}
+
+void extend_value_array(ValueArray *array, const ValueArray *with) {
+    size_t new_count = array->count + with->count;
+    if (array->capacity < new_count) {
+        size_t old_capacity = array->capacity;
+        array->capacity = new_count;
+        array->values = GROW_ARRAY(Value, array->values, old_count, array->capacity);
+    }
+    memcpy(&array->values[array->count], with->values, with->count * sizeof(Value));
+    array->count = new_count;
+}
+
+ValueArray cut_value_array(ValueArray *array, size_t index) {
+    ValueArray tail;
+
+    if (index >= array->count) {
+        init_value_array(&tail);
+        return tail;
+    }
+    
+    tail->count = array->count - index;
+    tail->capacity = tail->count;
+    tail->values = ALLOCATE(Value, tail->capacity);
+    memcpy(tail->values, &array->values[index], tail->count * sizeof(Value));
+    array->count = index;
+
+    return tail;
 }
 
 void free_value_array(ValueArray *array) {

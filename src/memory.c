@@ -72,6 +72,8 @@ static void blacken_object(Obj *object) {
 #endif
 
     switch (object->type) {
+    case OBJ_ARRAY:
+        mark_array(((ObjArray *)object)->elements);
     case OBJ_BOUND_METHOD: {
         ObjBoundMethod *bound = (ObjBoundMethod *)object;
         mark_value(bound->receiver);

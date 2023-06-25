@@ -41,14 +41,19 @@ typedef struct {
 #define HASH_NUMBER(value) hash_double((value).as.number)
 
 typedef struct {
-    uint32_t capacity;
-    uint32_t count;
+    size_t capacity;
+    size_t count;
     Value *values;
 } ValueArray;
 
 bool values_equal(Value a, Value b);
 void init_value_array(ValueArray *array);
 void write_value_array(ValueArray *array, Value value);
+bool insert_value_array(ValueArray *array, size_t index, Value value);
+bool remove_value_array(ValueArray *array, size_t index, Value *value);
+bool get_value_array(const ValueArray *array, size_t index, Value *value);
+void extend_value_array(ValueArray *array, const ValueArray *with);
+ValueArray cut_value_array(ValueArray *array, size_t index);
 void free_value_array(ValueArray *array);
 void print_value(Value value);
 
