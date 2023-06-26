@@ -800,14 +800,17 @@ static InterpretResult run(void) {
             Value index = pop();
             if (!IS_NUMBER(index)) {
                 RUNTIME_ERROR("Index must be a number.");
+                return INTERPRET_RUNTIME_ERROR;
             }
             Value array = pop();
             if (!IS_ARRAY(array)) {
                 RUNTIME_ERROR("Only arrays are indexible.");
+                return INTERPRET_RUNTIME_ERROR;
             }
             Value value;
             if (!get_value_array(&AS_ARRAY(array)->elements, (size_t)AS_NUMBER(index), &value)) {
                 RUNTIME_ERROR("Index %g is out of bounds.", AS_NUMBER(index));
+                return INTERPRET_RUNTIME_ERROR;
             }
             push(value);
             break;
@@ -817,13 +820,16 @@ static InterpretResult run(void) {
             Value index = pop();
             if (!IS_NUMBER(index)) {
                 RUNTIME_ERROR("Index must be a number.");
+                return INTERPRET_RUNTIME_ERROR;
             }
             Value array = pop();
             if (!IS_ARRAY(array)) {
                 RUNTIME_ERROR("Only arrays are indexible.");
+                return INTERPRET_RUNTIME_ERROR;
             }
             if (!set_value_array(&AS_ARRAY(array)->elements, (size_t)AS_NUMBER(index), value)) {
                 RUNTIME_ERROR("Index %g is out of bounds.", AS_NUMBER(index));
+                return INTERPRET_RUNTIME_ERROR;
             }
             break;
         }
