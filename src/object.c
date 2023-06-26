@@ -15,6 +15,7 @@
     copy_string(string_literal, sizeof string_literal - 1)
 
 const char *const obj_type_names[] = {
+    [OBJ_ARRAY] = "OBJ_ARRAY",
     [OBJ_BOUND_METHOD] = "OBJ_BOUND_METHOD",
     [OBJ_CLASS] = "OBJ_CLASS",
     [OBJ_CLOSURE] = "OBJ_CLOSURE",
@@ -25,7 +26,7 @@ const char *const obj_type_names[] = {
     [OBJ_UPVALUE] = "OBJ_UPVALUE",
 };
 
-#define ARRAY_COUNT 8
+#define ARRAY_COUNT 9
 static_assert(ARRAY_COUNT == OBJ_TYPE_COUNT);
 #undef ARRAY_COUNT
 

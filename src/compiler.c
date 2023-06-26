@@ -128,7 +128,7 @@ static void advance(void) {
     for (;;) {
         parser.current = scan_token();
         if (parser.current.type != TOKEN_ERROR) break;
-        
+
         error_at_current(parser.current.start);
     }
 }
@@ -196,7 +196,7 @@ static uint32_t make_constant(Value value) {
         error("Too many constants in one chunk");
         return 0;
     }
-    
+
     return constant;
 }
 
@@ -252,9 +252,9 @@ static void emit_popn(uint32_t pop_count) {
         emit_byte(OP_POP);
         return;
     }
-    
+
     emit_varint_instruction(OP_POPN, pop_count);
-}    
+}
 
 
 static void patch_jump(int offset) {
@@ -317,7 +317,7 @@ static void init_compiler(Compiler *compiler, FunctionType type) {
     if (type != TYPE_SCRIPT) {
         current->function->name = copy_string(parser.previous.start, parser.previous.length);
     }
-    
+
     Local *local = &current->locals[current->local_count++];
     local->depth = 0;
     local->is_mutable = false;
@@ -347,7 +347,7 @@ static ObjFunction *end_compiler(void) {
     ObjFunction *function = current->function;
 
     free_compiler(current);
-    
+
 #ifdef DEBUG_PRINT_CODE
     if (!parser.had_error) {
         disassemble_chunk(current_chunk(), (function->name != NULL)
@@ -435,7 +435,7 @@ static uint32_t add_upvalue(Compiler *compiler, uint32_t index, bool is_local) {
         compiler->upvalue_capacity = GROW_CAPACITY(old_capacity);
         compiler->upvalues = GROW_ARRAY(Upvalue, compiler->upvalues, old_capacity, compiler->upvalue_capacity);
     }
-    
+
     compiler->upvalues[upvalue_count].is_local = is_local;
     compiler->upvalues[upvalue_count].index = index;
     return compiler->function->upvalue_count++;
@@ -468,7 +468,7 @@ static void add_local(Token name, bool is_mutable) {
         current->local_capacity = GROW_CAPACITY(old_capacity);
         current->locals = GROW_ARRAY(Local, current->locals, old_capacity, current->local_capacity);
     }
-    
+
     Local *local = &current->locals[current->local_count++];
     local->name = name;
     local->depth = -1;
@@ -491,7 +491,7 @@ static void declare_variable(bool is_mutable) {
             error("Already a variable with this name in this scope.");
         }
     }
-    
+
     add_local(*name, is_mutable);
 }
 
@@ -500,7 +500,7 @@ static uint32_t parse_variable(const char *error_message, bool is_mutable) {
 
     declare_variable(is_mutable);
     if (current->scope_depth > 0) return 0;
-    
+
     return identifier_constant(&parser.previous);
 }
 
@@ -514,7 +514,7 @@ static void define_variable(uint32_t global, bool is_mutable) {
         mark_initialized();
         return;
     }
-    
+
     emit_varint_instruction(OP_DEFINE_GLOBAL, global);
     emit_byte(is_mutable);
 }
@@ -543,6 +543,22 @@ static void and(bool can_assign) {
     parse_precedence(PREC_AND);
 
     patch_jump(end_jump);
+}
+
+static void array(bool can_assign) {
+    (void)can_assign;
+    ulong length = 0;
+    if (!check(TOKEN_RIGHT_BRACKET)) {
+        do {
+            expression();
+            if (length == UINT24_MAX) {
+                error("Too many elements in array literal.");
+            }
+            ++length;
+        } while (match(TOKEN_COMMA));
+    }
+    consume(TOKEN_RIGHT_BRACKET, "Expect ']' after array elements.");
+    emit_varint_instruction(OP_ARRAY, length);
 }
 
 static void binary(bool can_assign) {
@@ -617,6 +633,13 @@ static void grouping(bool can_assign) {
     (void)can_assign;
     expression();
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
+}
+
+static void index(bool can_assign) {
+    (void)can_assign;
+    expression();
+    consume(TOKEN_RIGHT_BRACKET, "Expect ']' after index.");
+    emit_byte(OP_INDEX);
 }
 
 static void number(bool can_assign) {
@@ -742,6 +765,8 @@ ParseRule rules[] = {
     [TOKEN_RIGHT_PAREN]   = {NULL,       NULL,        PREC_NONE},
     [TOKEN_LEFT_BRACE]    = {NULL,       NULL,        PREC_NONE},
     [TOKEN_RIGHT_BRACE]   = {NULL,       NULL,        PREC_NONE},
+    [TOKEN_LEFT_BRACKET]  = {array,      index,       PREC_CALL},
+    [TOKEN_RIGHT_BRACKET] = {NULL,       NULL,        PREC_NONE},
     [TOKEN_COLON]         = {NULL,       NULL,        PREC_NONE},
     [TOKEN_COMMA]         = {NULL,       NULL,        PREC_NONE},
     [TOKEN_DOT]           = {NULL,       dot,         PREC_CALL},
@@ -784,7 +809,7 @@ ParseRule rules[] = {
     [TOKEN_ERROR]         = {NULL,       NULL,        PREC_NONE},
     [TOKEN_EOF]           = {NULL,       NULL,        PREC_NONE},
 };
-    
+
 static void parse_precedence(Precedence precedence) {
     advance();
     ParseFn prefix_rule = get_rule(parser.previous.type)->prefix;
@@ -810,7 +835,7 @@ static void parse_precedence(Precedence precedence) {
 static ParseRule *get_rule(TokenType type) {
     return &rules[type];
 }
-    
+
 static void expression(void) {
     parse_precedence(PREC_ASSIGNMENT);
 }
@@ -967,7 +992,7 @@ static void delete_variable(void) {
         // Upvalue.
         local = current->upvalues[upvalue].index;
     }
-    
+
     current->locals[local].is_alive = false;
 }
 
@@ -997,7 +1022,7 @@ static void del_statement(void) {
     else {
         consume(TOKEN_IDENTIFIER, "Expect identifier after 'del'.");
     }
-    
+
     if (check(TOKEN_DOT) || check(TOKEN_LEFT_PAREN)) {
         delete_property();
     }
@@ -1043,7 +1068,7 @@ static void break_statement(void) {
         error("Cannot have 'break' outside of loop.");
         return;
     }
-    
+
     // End all nested scoped before jumping.
     pop_locals(peek_scope_depth(&current->loops));
 
@@ -1142,7 +1167,7 @@ static void if_statement(void) {
     statement();
 
     int else_jump = emit_jump(OP_JUMP);
-    
+
     patch_jump(then_jump);
     emit_byte(OP_POP);
 
@@ -1164,7 +1189,7 @@ static void input_statement(void) {
         set_op = OP_SET_GLOBAL;
     }
     emit_varint_instruction(set_op, arg);
-    
+
     consume(TOKEN_SEMICOLON, "Expect ';' after variable name.");
 }
 
@@ -1195,7 +1220,7 @@ static void return_statement(void) {
 
 static void while_statement(void) {
     push_loop_stack(&current->loops, NEW_LOOP(current->scope_depth));
-    
+
     int loop_start = current_chunk()->count;
     consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
     expression();
@@ -1205,10 +1230,10 @@ static void while_statement(void) {
     emit_byte(OP_POP);
     statement();
     emit_loop(loop_start);
-    
+
     patch_jump(exit_jump);
     emit_byte(OP_POP);
-    
+
     Loop loop = pop_loop_stack(&current->loops);
     finish_loop(loop, loop_start);
 }
@@ -1309,7 +1334,7 @@ ObjFunction *compile(const char *source) {
     while (!match(TOKEN_EOF)) {
         declaration();
     }
-    
+
     ObjFunction *function = end_compiler();
     return (parser.had_error) ? NULL : function;
 }

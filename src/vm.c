@@ -221,6 +221,15 @@ static bool call_value(Value callee, ulong arg_count) {
     return false;
 }
 
+static void create_array(ulong length) {
+    ObjArray *array = new_array();
+    for (Value *value = &vm.stack_top[-(long long)length]; value != vm.stack_top; ++value) {
+        write_value_array(&array->elements, *value);
+    }
+    popn(length);
+    push(OBJ_VAL(array));
+}
+
 static bool invoke_from_class(ObjClass *class, ObjString *name, ulong arg_count) {
     Value method;
     if (!table_get(&class->methods, STRING_KEY(name), &method)) {
@@ -756,6 +765,32 @@ static InterpretResult run(void) {
         case OP_LOOP: {
             uint16_t offset = READ_SHORT();
             ip -= offset;
+            break;
+        }
+        case OP_ARRAY: {
+            ulong length = READ_BYTE();
+            UPDATE_IP();
+            create_array(length);
+            break;
+        }
+        case OP_ARRAY_LONG: {
+            ulong length = READ_BYTES();
+            UPDATE_IP();
+            create_array(length);
+            break;
+        }
+        case OP_INDEX: {
+            Value index = pop();
+            if (!IS_NUMBER(index)) {
+                RUNTIME_ERROR("Index must be a number.");
+            }
+            Value array = pop();
+            if (!IS_ARRAY(array)) {
+                RUNTIME_ERROR("Only arrays are indexible.");
+            }
+            Value value;
+            get_value_array(&AS_ARRAY(array)->elements, (size_t)AS_NUMBER(index), &value);
+            push(value);
             break;
         }
         case OP_CALL: {

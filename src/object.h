@@ -109,6 +109,7 @@ typedef struct {
     ValueArray elements;
 } ObjArray;
 
+ObjArray *new_array(void);
 ObjBoundMethod *new_bound_method(Value receiver, ObjClosure *method);
 ObjClass *new_class(ObjString *name);
 ObjClosure *new_closure(ObjFunction *function);

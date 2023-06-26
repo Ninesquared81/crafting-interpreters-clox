@@ -49,7 +49,7 @@ bool remove_value_array(ValueArray *array, size_t index, Value *value) {
     }
 
     *value = array->values[index];
-    for (Value *vp = &array->values[index]; vp < &array->values[array->count]) {
+    for (Value *vp = &array->values[index]; vp < &array->values[array->count]; ++vp) {
         *vp = vp[1];
     }
     --array->count;
@@ -70,7 +70,7 @@ void extend_value_array(ValueArray *array, const ValueArray *with) {
     if (array->capacity < new_count) {
         size_t old_capacity = array->capacity;
         array->capacity = new_count;
-        array->values = GROW_ARRAY(Value, array->values, old_count, array->capacity);
+        array->values = GROW_ARRAY(Value, array->values, old_capacity, array->capacity);
     }
     memcpy(&array->values[array->count], with->values, with->count * sizeof(Value));
     array->count = new_count;
@@ -84,10 +84,10 @@ ValueArray cut_value_array(ValueArray *array, size_t index) {
         return tail;
     }
     
-    tail->count = array->count - index;
-    tail->capacity = tail->count;
-    tail->values = ALLOCATE(Value, tail->capacity);
-    memcpy(tail->values, &array->values[index], tail->count * sizeof(Value));
+    tail.count = array->count - index;
+    tail.capacity = tail.count;
+    tail.values = ALLOCATE(Value, tail.capacity);
+    memcpy(tail.values, &array->values[index], tail.count * sizeof(Value));
     array->count = index;
 
     return tail;
