@@ -789,7 +789,9 @@ static InterpretResult run(void) {
                 RUNTIME_ERROR("Only arrays are indexible.");
             }
             Value value;
-            get_value_array(&AS_ARRAY(array)->elements, (size_t)AS_NUMBER(index), &value);
+            if (!get_value_array(&AS_ARRAY(array)->elements, (size_t)AS_NUMBER(index), &value)) {
+                RUNTIME_ERROR("Index %g is out of bounds.", AS_NUMBER(index));
+            }
             push(value);
             break;
         }
