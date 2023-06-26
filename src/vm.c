@@ -115,7 +115,7 @@ void push(Value value) {
         }
         vm.stack = GROW_ARRAY(Value, vm.stack, old_capacity, vm.stack_capacity);
         vm.stack_top = vm.stack + old_capacity;
-        
+
         // Make sure slots pointers point into the new allocation.
         // Note: We have to save the offset and use it here, since at this point the slots pointer is invalid.
         for (CallFrame *frame = vm.frames; frame < vm.frames + vm.frame_count; ++frame) {
@@ -373,7 +373,7 @@ static void concatenate(void) {
 static InterpretResult run(void) {
     CallFrame *frame = &vm.frames[vm.frame_count - 1];
     register uint8_t *ip = frame->ip;
-    
+
 #define READ_BYTE() (*ip++)
 #define READ_BYTES() (ip += 3, (uint32_t)(      \
                           (ip[-3] << 16) ^      \
@@ -945,7 +945,7 @@ static InterpretResult run(void) {
                 RUNTIME_ERROR("Superclass must be a class.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            
+
             ObjClass *subclass = AS_CLASS(peek(0));
             table_add_all(&AS_CLASS(superclass)->methods, &subclass->methods);
             pop();  // Subclass.

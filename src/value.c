@@ -118,13 +118,32 @@ void print_value(Value value) {
     }
 }
 
+static bool arrays_equal(ValueArray *a, ValueArray *b) {
+    if (a->count != b->count) return false;
+    for (size_t i = 0; i < a->count; ++i) {
+        Value value_a, value_b;
+        get_value_array(a, i, &value_a);
+        get_value_array(b, i, &value_b);
+        if (!values_equal(value_a, value_b)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool values_equal(Value a, Value b) {
     if (a.type != b.type) return false;
     switch (a.type) {
     case VAL_BOOL:   return AS_BOOL(a) ==  AS_BOOL(b);
     case VAL_NIL:    return true;
     case VAL_NUMBER: return AS_NUMBER(a) == AS_NUMBER(b);
-    case VAL_OBJ:    return AS_OBJ(a) == AS_OBJ(b);
+    case VAL_OBJ:
+        if (AS_OBJ(a)->type == OBJ_ARRAY && AS_OBJ(b)->type == OBJ_ARRAY) {
+            return arrays_equal(&AS_ARRAY(a)->elements, &AS_ARRAY(b)->elements);
+        }
+        else {
+            return AS_OBJ(a) == AS_OBJ(b);
+        }
     default:         return false;  // Unreachable.
     }
 }
