@@ -548,15 +548,16 @@ static void and(bool can_assign) {
 static void array(bool can_assign) {
     (void)can_assign;
     ulong length = 0;
-    if (!check(TOKEN_RIGHT_BRACKET)) {
-        do {
-            expression();
-            if (length == UINT24_MAX) {
-                error("Too many elements in array literal.");
-            }
-            ++length;
-        } while (match(TOKEN_COMMA));
-    }
+    do {
+        if (check(TOKEN_RIGHT_BRACKET)) {
+            break;
+        }
+        expression();
+        if (length == UINT24_MAX) {
+            error("Too many elements in array literal.");
+        }
+        ++length;
+    } while (match(TOKEN_COMMA));
     consume(TOKEN_RIGHT_BRACKET, "Expect ']' after array elements.");
     emit_varint_instruction(OP_ARRAY, length);
 }
