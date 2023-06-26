@@ -52,6 +52,7 @@ void write_value_array(ValueArray *array, Value value);
 bool insert_value_array(ValueArray *array, size_t index, Value value);
 bool remove_value_array(ValueArray *array, size_t index, Value *value);
 bool get_value_array(const ValueArray *array, size_t index, Value *value);
+bool set_value_array(ValueArray *array, size_t index, Value value);
 void extend_value_array(ValueArray *array, const ValueArray *with);
 ValueArray cut_value_array(ValueArray *array, size_t index);
 void free_value_array(ValueArray *array);

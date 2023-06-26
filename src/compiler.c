@@ -637,10 +637,15 @@ static void grouping(bool can_assign) {
 }
 
 static void index(bool can_assign) {
-    (void)can_assign;
-    expression();
+    expression();  // Index.
     consume(TOKEN_RIGHT_BRACKET, "Expect ']' after index.");
-    emit_byte(OP_INDEX);
+    if (can_assign && match(TOKEN_EQUAL)) {
+        expression();  // Value.
+        emit_byte(OP_SET_INDEX);
+    }
+    else {
+        emit_byte(OP_GET_INDEX);
+    }
 }
 
 static void number(bool can_assign) {

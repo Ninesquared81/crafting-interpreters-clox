@@ -65,6 +65,15 @@ bool get_value_array(const ValueArray *array, size_t index, Value *value) {
     return true;
 }
 
+bool set_value_array(ValueArray *array, size_t index, Value value) {
+    if (index >= array->count) {
+        return false;
+    }
+
+    array->values[index] = value;
+    return true;
+}
+
 void extend_value_array(ValueArray *array, const ValueArray *with) {
     size_t new_count = array->count + with->count;
     if (array->capacity < new_count) {

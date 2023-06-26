@@ -779,7 +779,7 @@ static InterpretResult run(void) {
             create_array(length);
             break;
         }
-        case OP_INDEX: {
+        case OP_GET_INDEX: {
             Value index = pop();
             if (!IS_NUMBER(index)) {
                 RUNTIME_ERROR("Index must be a number.");
@@ -791,6 +791,21 @@ static InterpretResult run(void) {
             Value value;
             get_value_array(&AS_ARRAY(array)->elements, (size_t)AS_NUMBER(index), &value);
             push(value);
+            break;
+        }
+        case OP_SET_INDEX: {
+            Value value = pop();  // The value to be set.
+            Value index = pop();
+            if (!IS_NUMBER(index)) {
+                RUNTIME_ERROR("Index must be a number.");
+            }
+            Value array = pop();
+            if (!IS_ARRAY(array)) {
+                RUNTIME_ERROR("Only arrays are indexible.");
+            }
+            if (!set_value_array(&AS_ARRAY(array)->elements, (size_t)AS_NUMBER(index), value)) {
+                RUNTIME_ERROR("Index %g is out of bounds.", AS_NUMBER(index));
+            }
             break;
         }
         case OP_CALL: {
