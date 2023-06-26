@@ -60,6 +60,7 @@ typedef enum {
     OP_DEL_PROPERTY_LONG,
     OP_DEL_GLOBAL,
     OP_DEL_GLOBAL_LONG,
+    OP_DEL_INDEX,
     OP_GET_SUPER,
     OP_GET_SUPER_LONG,
     OP_EQUAL,

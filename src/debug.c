@@ -167,6 +167,8 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return constant_instruction("OP_DEL_GLOBAL", chunk, offset);
     case OP_DEL_GLOBAL_LONG:
         return constant_long_instruction("OP_DEL_GLOBAL_LONG", chunk, offset);
+    case OP_DEL_INDEX:
+        return simple_instruction("OP_DEL_INDEX", offset);
     case OP_GET_SUPER:
         return constant_instruction("OP_GET_SUPER", chunk, offset);
     case OP_GET_SUPER_LONG:

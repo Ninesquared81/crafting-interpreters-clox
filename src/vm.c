@@ -658,6 +658,23 @@ static InterpretResult run(void) {
             }
             break;
         }
+        case OP_DEL_INDEX: {
+            Value index = pop();
+            if (!IS_NUMBER(index)) {
+                RUNTIME_ERROR("Index must be a number.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            Value array = pop();
+            if (!IS_ARRAY(array)) {
+                RUNTIME_ERROR("Only arrays are indexible.");
+            }
+            Value dummy;
+            if (!remove_value_array(&AS_ARRAY(array)->elements, (size_t)AS_NUMBER(index), &dummy)) {
+                RUNTIME_ERROR("Index %g is out of bounds.", AS_NUMBER(index));
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+        }
         case OP_GET_SUPER: {
             ObjString *name = READ_STRING();
             ObjClass *superclass = AS_CLASS(pop());

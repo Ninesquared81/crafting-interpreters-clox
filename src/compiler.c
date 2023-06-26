@@ -955,10 +955,15 @@ static void class_declaration(void) {
     current_class = current_class->enclosing;
 }
 
+static void delete_index(void);  // Forward declaration for mutually recursive functions.
 static void delete_property(void) {
-    variable(false);
     if (match(TOKEN_LEFT_PAREN)) {
         call(false);
+    }
+    if (match(TOKEN_LEFT_BRACKET)) {
+        // It was actually an array.
+        delete_index();
+        return;
     }
     consume(TOKEN_DOT, "Expect '.' before property in deletion target.");
     consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
@@ -973,6 +978,10 @@ static void delete_property(void) {
         else if (match(TOKEN_DOT)) {
             emit_varint_instruction(OP_GET_PROPERTY, name);
         }
+        else if (match(TOKEN_LEFT_BRACKET)) {
+            delete_index();
+            return;
+        }
         else {
             error_at_current("Expect '.', '(' or ';' after identifier in deletion target.");
         }
@@ -981,6 +990,28 @@ static void delete_property(void) {
     }
 
     emit_varint_instruction(OP_DEL_PROPERTY, name);
+}
+
+static void delete_index(void) {
+    expression();  // Index.
+    consume(TOKEN_RIGHT_BRACKET, "Expect ']' after index in deletion target.");
+    while (!check(TOKEN_SEMICOLON) && !check(TOKEN_EOF)) {
+        if (check(TOKEN_DOT) || check(TOKEN_LEFT_PAREN)) {
+            // It was actually a property.
+            emit_byte(OP_GET_INDEX);
+            delete_property();
+            return;
+        }
+        else if (check(TOKEN_LEFT_BRACKET)) {
+            emit_byte(OP_GET_INDEX);
+            expression();  // New index.
+            consume(TOKEN_RIGHT_BRACKET, "Expect ']' after index in deletion target.");
+        }
+        else {
+            error_at_current("Expect '[', '.' or ';' after index in deletion target");
+        }
+    }
+    emit_byte(OP_DEL_INDEX);
 }
 
 static void delete_variable(void) {
@@ -1030,7 +1061,13 @@ static void del_statement(void) {
     }
 
     if (check(TOKEN_DOT) || check(TOKEN_LEFT_PAREN)) {
+        variable(false);
         delete_property();
+    }
+    else if (check(TOKEN_LEFT_BRACKET)) {
+        variable(false);
+        advance();  // Must come after variable() call but before delete_index().
+        delete_index();
     }
     else {
         if (parser.previous.type == TOKEN_THIS) {
