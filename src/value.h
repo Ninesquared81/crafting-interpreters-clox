@@ -48,6 +48,7 @@ typedef struct {
 
 bool values_equal(Value a, Value b);
 void init_value_array(ValueArray *array);
+void copy_value_array(ValueArray *from, ValueArray *to);
 void write_value_array(ValueArray *array, Value value);
 bool insert_value_array(ValueArray *array, size_t index, Value value);
 bool remove_value_array(ValueArray *array, size_t index, Value *value);

@@ -370,6 +370,19 @@ static void concatenate(void) {
     push(OBJ_VAL(result));
 }
 
+static void concatenate_arrays(void) {
+    ObjArray *b = AS_ARRAY(peek(0));
+    ObjArray *a = AS_ARRAY(peek(1));
+    ObjArray *new = copy_array(a);
+    push(OBJ_VAL(new));
+    extend_value_array(&new->elements, &b->elements);
+    pop();  // New array.
+    pop();
+    pop();
+    push(OBJ_VAL(new));
+}
+    
+
 static InterpretResult run(void) {
     CallFrame *frame = &vm.frames[vm.frame_count - 1];
     register uint8_t *ip = frame->ip;
@@ -721,6 +734,9 @@ static InterpretResult run(void) {
                 double b = AS_NUMBER(pop());
                 double a = AS_NUMBER(pop());
                 push(NUMBER_VAL(a + b));
+            }
+            else if (IS_ARRAY(peek(0)) && IS_ARRAY(peek(1))) {
+                concatenate_arrays();
             }
             else {
                 RUNTIME_ERROR("Operands must be two numbers or two strings.");

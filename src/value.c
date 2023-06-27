@@ -14,6 +14,13 @@ void init_value_array(ValueArray *array) {
     array->count = 0;
 }
 
+void copy_value_array(ValueArray *from, ValueArray *to) {
+    to->count = from->count;
+    to->capacity = to->count;
+    to->values = ALLOCATE(Value, to->capacity);
+    memcpy(to->values, from->values, to->count * sizeof(Value));
+}
+
 void write_value_array(ValueArray *array, Value value) {
     if (array->capacity < array->count + 1) {
         size_t old_capacity = array->capacity;

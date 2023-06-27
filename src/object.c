@@ -52,6 +52,12 @@ ObjArray *new_array(void) {
     return array;
 }
 
+ObjArray *copy_array(ObjArray *from) {
+    ObjArray *copy = new_array();
+    copy_value_array(&from->elements, &copy->elements);
+    return copy;
+}
+
 ObjBoundMethod *new_bound_method(Value receiver, ObjClosure *method) {
     ObjBoundMethod *bound = ALLOCATE_OBJ(ObjBoundMethod, OBJ_BOUND_METHOD);
     bound->receiver = receiver;
