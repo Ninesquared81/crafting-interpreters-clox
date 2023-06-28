@@ -21,6 +21,25 @@ void copy_value_array(ValueArray *from, ValueArray *to) {
     memcpy(to->values, from->values, to->count * sizeof(Value));
 }
 
+void shift_value_array(ValueArray *array, size_t from, long long by) {
+    if (by > 0) {
+        if (array->capacity < array->count + by) {
+            size_t old_capacity = array->capacity;
+            array->capacity = array->count + by;
+            array->values = GROW_ARRAY(Value, array->values, old_capacity, array->capacity);
+        }
+        for (size_t i = array->count; i >= from; --i) {
+            array->values[i + by] = array->values[i];
+        }
+    }
+    else {
+        for (size_t i = from; i < array->count; ++i) {
+            array->values[i + by] = array->values[i];
+        }
+    }
+    array->count += by;
+}
+
 void write_value_array(ValueArray *array, Value value) {
     if (array->capacity < array->count + 1) {
         size_t old_capacity = array->capacity;

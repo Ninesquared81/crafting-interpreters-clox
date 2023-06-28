@@ -382,6 +382,70 @@ static void concatenate_arrays(void) {
     push(OBJ_VAL(new));
 }
     
+static double normalise_index(double index, size_t count) {
+    if (index < 0) {
+        index += count;
+        if (index < 0) {
+            index = 0;
+        }
+    }
+    if (index > count) {
+        index  = count;
+    }
+    return index;
+}
+
+static void normalise_slice(void) {
+    Value stop = pop();
+    Value start = pop();
+    if (!IS_NUMBER(start) && !IS_NIL(start)) {
+        runtime_error("Slice start must be a number or nil.");
+    }
+    if (!IS_NUMBER(stop) && !IS_NIL(stop)) {
+        runtime_error("Slice stop must be a number or nil.");
+    }
+    Value array = pop();
+    if (!IS_ARRAY(array)) {
+        runtime_error("Only arrays can be sliced.");
+    }
+    size_t count = AS_ARRAY(array)->elements.count;
+    if (IS_NIL(start)) {
+        start = NUMBER_VAL(0.0);
+    }
+    if (IS_NIL(stop)) {
+        stop = NUMBER_VAL((double)count);
+    }
+    start = NUMBER_VAL(normalise_index(AS_NUMBER(start), count));
+    stop = NUMBER_VAL(normalise_index(AS_NUMBER(stop), count));
+    push(array);
+    push(start);
+    push(stop);
+}
+
+static ObjArray *slice_array(ObjArray *array, size_t start, size_t stop) {
+    ObjArray *slice = new_array();
+    if (stop <= start) return slice;
+    
+    ValueArray *elements = &slice->elements;
+    elements->count = stop - start;
+    elements->capacity = elements->count;
+    elements->values = ALLOCATE(Value, elements->capacity);
+
+    memcpy(elements->values, &array->elements.values[start],
+           elements->count * sizeof(Value));
+
+    return slice;
+}
+
+static void set_array_slice(ObjArray *array, size_t start, size_t stop, ObjArray *new) {
+    if (start >= stop) return;
+
+    long long slice_count = stop - start;
+    long long diff = (long long)new->elements.count - slice_count;
+    shift_value_array(&array->elements, stop, diff);
+    memcpy(&array->elements.values[start], new->elements.values,
+           new->elements.count * sizeof(Value));
+}
 
 static InterpretResult run(void) {
     CallFrame *frame = &vm.frames[vm.frame_count - 1];
@@ -847,6 +911,31 @@ static InterpretResult run(void) {
                 RUNTIME_ERROR("Index %g is out of bounds.", AS_NUMBER(index));
                 return INTERPRET_RUNTIME_ERROR;
             }
+            break;
+        }
+        case OP_GET_SLICE: {
+            UPDATE_IP();
+            normalise_slice();
+            double stop = AS_NUMBER(pop());
+            double start = AS_NUMBER(pop());
+            ObjArray *array = AS_ARRAY(peek(0));
+            ObjArray *slice = slice_array(array, (size_t)start, (size_t)stop);
+            pop();  // Array.
+            push(OBJ_VAL(slice));
+            break;
+        }
+        case OP_SET_SLICE: {
+            Value value = pop();  // The value to set.
+            if (!IS_ARRAY(value)) {
+                RUNTIME_ERROR("Can only set array slice with another array.");
+            }
+            UPDATE_IP();
+            normalise_slice();
+            double stop = AS_NUMBER(pop());
+            double start = AS_NUMBER(pop());
+            ObjArray *array = AS_ARRAY(peek(0));
+            set_array_slice(array, (size_t)start, (size_t)stop, AS_ARRAY(value));
+            pop();
             break;
         }
         case OP_CALL: {

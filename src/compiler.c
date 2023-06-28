@@ -636,15 +636,40 @@ static void grouping(bool can_assign) {
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
-static void index(bool can_assign) {
-    expression();  // Index.
-    consume(TOKEN_RIGHT_BRACKET, "Expect ']' after index.");
-    if (can_assign && match(TOKEN_EQUAL)) {
-        expression();  // Value.
-        emit_byte(OP_SET_INDEX);
+static void slice(void) {
+    // Note: we emit OP_NIL if the user didn't provide a specific index/step.
+    if (check(TOKEN_RIGHT_BRACKET)) {
+        emit_byte(OP_NIL);
     }
     else {
-        emit_byte(OP_GET_INDEX);
+        expression();  // End index.
+    }
+}
+
+static void index(bool can_assign) {
+    uint8_t get_op, set_op;
+    if (check(TOKEN_COLON)) {
+        emit_byte(OP_NIL);  // Empty start index of slice.
+    }
+    else {
+        expression();  // Index (or start index of slice).
+    }
+    if (match(TOKEN_COLON)) {
+        slice();
+        get_op = OP_GET_SLICE;
+        set_op = OP_SET_SLICE;
+    }
+    else {
+        get_op = OP_GET_INDEX;
+        set_op = OP_SET_INDEX;
+    }
+    consume(TOKEN_RIGHT_BRACKET, "Expect ']' after index or slice.");
+    if (can_assign && match(TOKEN_EQUAL)) {
+        expression();  // Value.
+        emit_byte(set_op);
+    }
+    else {
+        emit_byte(get_op);
     }
 }
 

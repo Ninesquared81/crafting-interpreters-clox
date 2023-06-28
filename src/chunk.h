@@ -81,6 +81,8 @@ typedef enum {
     OP_ARRAY_LONG,
     OP_GET_INDEX,
     OP_SET_INDEX,
+    OP_GET_SLICE,
+    OP_SET_SLICE,
     OP_CALL,
     OP_CALL_LONG,
     OP_INVOKE,
