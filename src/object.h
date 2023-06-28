@@ -28,6 +28,10 @@
 #define AS_STRING(value) ((ObjString *)AS_OBJ(value))
 #define AS_CSTRING(value) (((ObjString *)AS_OBJ(value))->chars)
 
+#define FROM_STRING_LITERAL(string_literal) \
+    copy_string(string_literal, sizeof string_literal - 1)
+
+
 typedef enum {
     OBJ_ARRAY,
     OBJ_BOUND_METHOD,

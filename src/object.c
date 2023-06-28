@@ -11,8 +11,6 @@
 #define ALLOCATE_OBJ(type, object_type) \
     (type *)allocate_object(sizeof(type), object_type)
 
-#define FROM_STRING_LITERAL(string_literal) \
-    copy_string(string_literal, sizeof string_literal - 1)
 
 const char *const obj_type_names[] = {
     [OBJ_ARRAY] = "OBJ_ARRAY",

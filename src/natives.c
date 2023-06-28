@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include "common.h"
+#include "memory.h"
 #include "natives.h"
 #include "object.h"
 #include "table.h"
@@ -164,11 +165,90 @@ static bool puts_native(ulong arg_count, Value *args, Value *result) {
     return true;
 }
 
+static bool len_native(ulong arg_count, Value *args, Value *result) {
+    (void)arg_count;
+    Value iterable = args[0];
+    if (IS_ARRAY(iterable)) {
+        ObjArray *array = AS_ARRAY(iterable);
+        *result = NUMBER_VAL((double)array->elements.count);
+    }
+    else if (IS_STRING(iterable)) {
+        ObjString *string = AS_STRING(iterable);
+        *result = NUMBER_VAL((double)string->length);
+    }
+    else {
+        runtime_error("Argument to len() must be an array or string.");
+        return false;
+    }
+    return true;
+}
+
+static bool encode_native(ulong arg_count, Value *args, Value *result) {
+    (void)arg_count;
+    Value encoding = args[0];
+    if (!IS_STRING(args[1])) {
+        runtime_error("Second argument to encode() must be a string.");
+        return false;
+    }
+    ObjString *string = AS_STRING(args[1]);
+    ObjArray *array = new_array();
+    ObjString *ascii = FROM_STRING_LITERAL("ascii");
+    if (values_equal(encoding, OBJ_VAL(ascii))) {
+        ValueArray *elements = &array->elements;
+        elements->count = string->length;
+        elements->capacity = elements->count;
+        elements->values = ALLOCATE(Value, elements->capacity);
+        for (int i = 0; i < string->length; ++i) {
+            elements->values[i] = NUMBER_VAL(string->chars[i]);
+        }
+    }
+    else {
+        runtime_error("Unknown encoding.");
+        return false;
+    }
+    *result = OBJ_VAL(array);
+    return true;
+}
+
+static bool decode_native(ulong arg_count, Value *args, Value *result) {
+    (void)arg_count;
+    Value encoding = args[0];
+    if (!IS_ARRAY(args[1])) {
+        runtime_error("Second argument to decode() must be an array.");
+        return false;
+    }
+    ObjArray *array = AS_ARRAY(args[1]);
+    ObjString *ascii = FROM_STRING_LITERAL("ascii");
+    char *heap_chars;
+    int length;
+    if (values_equal(encoding, OBJ_VAL(ascii))) {
+        length = array->elements.count;
+        heap_chars = ALLOCATE(char, length + 1);
+        for (int i = 0; i < length; ++i) {
+            Value character = array->elements.values[i];
+            if (!IS_NUMBER(character)) {
+                runtime_error("Array element must be a number.");
+                return false;
+            }
+            heap_chars[i] = (char)AS_NUMBER(character);
+        }
+    }
+    else {
+        runtime_error("Unknown encoding.");
+        return false;
+    }
+    *result = OBJ_VAL(take_string(heap_chars, length));
+    return true;
+}
+
 NativeEntry natives[] = {
     {"clock", 0, clock_native},
+    {"decode", 2, decode_native},
+    {"encode", 2, encode_native},
     {"get_property", 2, get_property_native},
     {"gets", 0, gets_native},
     {"has_property", 2, has_property_native},
+    {"len", 1, len_native},
     {"puts", 1, puts_native},
     {"rand", 0, rand_native},
     {"remove_property", 2, remove_property_native},
