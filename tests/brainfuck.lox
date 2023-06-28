@@ -1,0 +1,55 @@
+// This is a brainfuck interpreter written in Lox.
+// TODOs:
+// 1. implement string indexing/slicing
+// 2. write the standard library functions used (len(), encode()/decode())
+// 3. ???
+// 4. Profit
+
+
+val ARRAY_CAPACITY = 30000;
+var array = [0];
+for (var i = 0; i < ARRAY_CAPACITY; i = i*2) {
+    array = array + array;
+}
+
+var dp = 0;
+
+var code;
+print "Enter some brainfuck code: ";
+input code;
+
+var input_buffer = "";
+var bufp = 0;
+
+for (var ip = 0; ip < len(code); ip = ip + 1) {
+    if (code[ip] == ">") {
+        dp = dp + 1;
+    }
+    else if (code[ip] == "<") {
+        dp = dp - 1;
+    }
+    else if (code[ip] == "+") {
+        array[dp] = array[dp] + 1;
+    }
+    else if (code[ip] == "-") {
+        array[dp] = array[dp] - 1;
+    }
+    else if (code[ip] == ",") {
+        if (bufp >= len(input_buffer)) {
+            input input_buffer
+            bufp = 0;
+        }
+        array[dp] = encode("ascii", input_buffer[bufp])[0];
+        bufp = bufp + 1;
+    }
+    if (code[ip] == ".") {
+        puts(decode("ascii", array[dp]));
+    }
+    else if (code[ip] == "[") {
+        // TODO
+    }
+    else if (code[ip] == "]") {
+        // TODO
+    }
+}
+
