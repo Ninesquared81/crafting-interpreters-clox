@@ -382,6 +382,49 @@ static void concatenate_arrays(void) {
     push(OBJ_VAL(new));
 }
     
+static void get_array_index(ObjArray *array, Value index) {
+    if (!IS_NUMBER(index)) {
+        runtime_error("Index must be a number.");
+    }
+    double real_index = AS_NUMBER(index);
+    if (real_index < 0) {
+        real_index += array->elements.count;
+    }
+    Value result;
+    if (!get_value_array(&array->elements, real_index, &result)) {
+        runtime_error("Index %g out of bounds.", AS_NUMBER(index));
+    }
+    push(result);
+}
+
+static void set_array_index(ObjArray *array, Value index, Value value) {
+    if (!IS_NUMBER(index)) {
+        runtime_error("Index must be a number.");
+    }
+    double real_index = AS_NUMBER(index);
+    if (real_index < 0) {
+        real_index += array->elements.count;
+    }
+    if (!set_value_array(&array->elements, real_index, value)) {
+        runtime_error("Index %g out of bounds.", AS_NUMBER(index));
+    }
+}
+
+static void get_string_index(ObjString *string, Value index) {
+    if (!IS_NUMBER(index)) {
+        runtime_error("Index must be a number.");
+    }
+    double real_index = AS_NUMBER(index);
+    if (real_index < 0) {
+        real_index += string->length;
+    }
+    if (real_index < 0 || real_index >= string->length) {
+        runtime_error("Index %g out of bounds.", AS_NUMBER(index));
+    }
+    ObjString *result = copy_string(&string->chars[(size_t)real_index], 1);
+    push(OBJ_VAL(result));
+}
+
 static double normalise_index(double index, size_t count) {
     if (index < 0) {
         index += count;
@@ -395,20 +438,17 @@ static double normalise_index(double index, size_t count) {
     return index;
 }
 
-static void normalise_slice(void) {
+static bool normalise_slice(size_t count) {
     Value stop = pop();
     Value start = pop();
     if (!IS_NUMBER(start) && !IS_NIL(start)) {
         runtime_error("Slice start must be a number or nil.");
+        return false;
     }
     if (!IS_NUMBER(stop) && !IS_NIL(stop)) {
         runtime_error("Slice stop must be a number or nil.");
+        return false;
     }
-    Value array = pop();
-    if (!IS_ARRAY(array)) {
-        runtime_error("Only arrays can be sliced.");
-    }
-    size_t count = AS_ARRAY(array)->elements.count;
     if (IS_NIL(start)) {
         start = NUMBER_VAL(0.0);
     }
@@ -417,9 +457,9 @@ static void normalise_slice(void) {
     }
     start = NUMBER_VAL(normalise_index(AS_NUMBER(start), count));
     stop = NUMBER_VAL(normalise_index(AS_NUMBER(stop), count));
-    push(array);
     push(start);
     push(stop);
+    return true;
 }
 
 static ObjArray *slice_array(ObjArray *array, size_t start, size_t stop) {
@@ -438,6 +478,10 @@ static ObjArray *slice_array(ObjArray *array, size_t start, size_t stop) {
 }
 
 static void set_array_slice(ObjArray *array, size_t start, size_t stop, ObjArray *new) {
+    if (start >= array->elements.count) {
+        extend_value_array(&array->elements, &new->elements);
+        return;
+    }
     if (start >= stop) return;
 
     long long slice_count = stop - start;
@@ -882,17 +926,18 @@ static InterpretResult run(void) {
                 RUNTIME_ERROR("Index must be a number.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            Value array = pop();
-            if (!IS_ARRAY(array)) {
-                RUNTIME_ERROR("Only arrays are indexible.");
+            Value iterable = pop();
+            UPDATE_IP();
+            if (IS_ARRAY(iterable)) {
+                get_array_index(AS_ARRAY(iterable), index);
+            }
+            else if (IS_STRING(iterable)) {
+                get_string_index(AS_STRING(iterable), index);
+            }
+            else {
+                RUNTIME_ERROR("Only arrays and strings can be indexed.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            Value value;
-            if (!get_value_array(&AS_ARRAY(array)->elements, (size_t)AS_NUMBER(index), &value)) {
-                RUNTIME_ERROR("Index %g is out of bounds.", AS_NUMBER(index));
-                return INTERPRET_RUNTIME_ERROR;
-            }
-            push(value);
             break;
         }
         case OP_SET_INDEX: {
@@ -902,39 +947,92 @@ static InterpretResult run(void) {
                 RUNTIME_ERROR("Index must be a number.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            Value array = pop();
-            if (!IS_ARRAY(array)) {
-                RUNTIME_ERROR("Only arrays are indexible.");
-                return INTERPRET_RUNTIME_ERROR;
+            Value iterable = pop();
+            UPDATE_IP();
+            if (IS_ARRAY(iterable)) {
+                set_array_index(AS_ARRAY(iterable), index, value);
             }
-            if (!set_value_array(&AS_ARRAY(array)->elements, (size_t)AS_NUMBER(index), value)) {
-                RUNTIME_ERROR("Index %g is out of bounds.", AS_NUMBER(index));
+            else if (IS_STRING(iterable)) {
+                RUNTIME_ERROR("Can't set a string index.");
+            }
+            else {
+                RUNTIME_ERROR("Only arrays and strings can be indexed.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
         }
         case OP_GET_SLICE: {
             UPDATE_IP();
-            normalise_slice();
-            double stop = AS_NUMBER(pop());
-            double start = AS_NUMBER(pop());
-            ObjArray *array = AS_ARRAY(peek(0));
-            ObjArray *slice = slice_array(array, (size_t)start, (size_t)stop);
-            pop();  // Array.
-            push(OBJ_VAL(slice));
+            Value iterable = peek(2);
+            if (IS_ARRAY(iterable)) {
+                if (!normalise_slice(AS_ARRAY(iterable)->elements.count)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                double stop = AS_NUMBER(pop());
+                double start = AS_NUMBER(pop());
+                ObjArray *array = AS_ARRAY(peek(0));
+                ObjArray *slice = slice_array(array, (size_t)start, (size_t)stop);
+                pop();  // Array.
+                push(OBJ_VAL(slice));
+            }
+            else if (IS_STRING(iterable)) {
+                if (!normalise_slice(AS_STRING(iterable)->length)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                size_t stop = AS_NUMBER(pop());
+                size_t start = AS_NUMBER(pop());
+                ObjString *string = AS_STRING(peek(0));
+                Value result = OBJ_VAL(
+                    copy_string(&string->chars[start],
+                                (start < stop) ? stop - start : 0));
+                pop();  // String.
+                push(result);
+            }
+            else {
+                RUNTIME_ERROR("Only arrays and strings can be sliced.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
             break;
         }
         case OP_SET_SLICE: {
             Value value = pop();  // The value to set.
-            if (!IS_ARRAY(value)) {
-                RUNTIME_ERROR("Can only set array slice with another array.");
+            if (!IS_ARRAY(value) && !IS_STRING(value)) {
+                RUNTIME_ERROR("Can only set slice with another array or string.");
             }
             UPDATE_IP();
-            normalise_slice();
-            double stop = AS_NUMBER(pop());
-            double start = AS_NUMBER(pop());
-            ObjArray *array = AS_ARRAY(peek(0));
-            set_array_slice(array, (size_t)start, (size_t)stop, AS_ARRAY(value));
+            Value iterable = peek(2);
+            if (IS_ARRAY(iterable)) {
+                ObjArray *array = AS_ARRAY(iterable);
+                normalise_slice(array->elements.count);
+                double stop = AS_NUMBER(pop());
+                double start = AS_NUMBER(pop());
+                ObjArray *slice;
+                if (IS_ARRAY(value)) {
+                    slice = AS_ARRAY(value);
+                }
+                else if (IS_STRING(value)) {
+                    slice = new_array();
+                    ObjString *string = AS_STRING(value);
+                    for (int i = 0; i < string->length; ++i) {
+                        write_value_array(&slice->elements,
+                                          OBJ_VAL(copy_string(&string->chars[i], 1)));
+                    }
+                }
+                else {
+                    RUNTIME_ERROR("Invalid program state [%s line %s]",
+                                  __FILE__, __LINE__);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                set_array_slice(array, (size_t)start, (size_t)stop, slice);
+            }
+            else if (IS_STRING(iterable)) {
+                RUNTIME_ERROR("Can't set a string slice.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            else {
+                RUNTIME_ERROR("Only arrays and strings can be sliced.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
             pop();
             break;
         }
