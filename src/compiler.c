@@ -1027,7 +1027,7 @@ static void delete_index(void) {
             delete_property();
             return;
         }
-        else if (check(TOKEN_LEFT_BRACKET)) {
+        else if (match(TOKEN_LEFT_BRACKET)) {
             emit_byte(OP_GET_INDEX);
             expression();  // New index.
             consume(TOKEN_RIGHT_BRACKET, "Expect ']' after index in deletion target.");
