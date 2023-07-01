@@ -382,55 +382,85 @@ static void concatenate_arrays(void) {
     push(OBJ_VAL(new));
 }
     
-static void get_array_index(ObjArray *array, Value index) {
+static double normalise_index(double index, size_t count) {
+    if (index < 0) {
+        index += count;
+    }
+    return index;
+}
+
+static bool get_array_index(ObjArray *array, Value index) {
     if (!IS_NUMBER(index)) {
         runtime_error("Index must be a number.");
+        return false;
     }
-    double real_index = AS_NUMBER(index);
+    double real_index = normalise_index(AS_NUMBER(index), array->elements.count);
     if (real_index < 0) {
-        real_index += array->elements.count;
+        runtime_error("Index %g is out of bounds", AS_NUMBER(index));
+        return false;
     }
     Value result;
     if (!get_value_array(&array->elements, real_index, &result)) {
-        runtime_error("Index %g out of bounds.", AS_NUMBER(index));
+        runtime_error("Index %g is out of bounds.", AS_NUMBER(index));
+        return false;
     }
     push(result);
+    return true;
 }
 
-static void set_array_index(ObjArray *array, Value index, Value value) {
+static bool set_array_index(ObjArray *array, Value index, Value value) {
     if (!IS_NUMBER(index)) {
         runtime_error("Index must be a number.");
+        return false;
     }
     double real_index = AS_NUMBER(index);
     if (real_index < 0) {
         real_index += array->elements.count;
     }
     if (!set_value_array(&array->elements, real_index, value)) {
-        runtime_error("Index %g out of bounds.", AS_NUMBER(index));
+        runtime_error("Index %g is out of bounds.", AS_NUMBER(index));
+        return false;
     }
+    return true;
 }
 
-static void get_string_index(ObjString *string, Value index) {
+static bool remove_array_index(ObjArray *array, Value index) {
     if (!IS_NUMBER(index)) {
         runtime_error("Index must be a number.");
+        return false;
     }
-    double real_index = AS_NUMBER(index);
+    double real_index = normalise_index(AS_NUMBER(index), array->elements.count);
     if (real_index < 0) {
-        real_index += string->length;
+        runtime_error("Index %g is out of bounds.", AS_NUMBER(index));
+        return false;
     }
+    Value dummy;
+    if (!remove_value_array(&array->elements, (size_t)real_index, &dummy)) {
+        runtime_error("Index %g is out of bounds.", AS_NUMBER(index));
+        return false;
+    }
+    return true;
+}
+
+static bool get_string_index(ObjString *string, Value index) {
+    if (!IS_NUMBER(index)) {
+        runtime_error("Index must be a number.");
+        return false;
+    }
+    double real_index = normalise_index(AS_NUMBER(index), string->length);
     if (real_index < 0 || real_index >= string->length) {
-        runtime_error("Index %g out of bounds.", AS_NUMBER(index));
+        runtime_error("Index %g is out of bounds.", AS_NUMBER(index));
+        return false;
     }
     ObjString *result = copy_string(&string->chars[(size_t)real_index], 1);
     push(OBJ_VAL(result));
+    return true;
 }
 
-static double normalise_index(double index, size_t count) {
+static double normalise_index_saturated(double index, size_t count) {
+    index = normalise_index(index, count);
     if (index < 0) {
-        index += count;
-        if (index < 0) {
-            index = 0;
-        }
+        index = 0;
     }
     if (index > count) {
         index  = count;
@@ -455,8 +485,8 @@ static bool normalise_slice(size_t count) {
     if (IS_NIL(stop)) {
         stop = NUMBER_VAL((double)count);
     }
-    start = NUMBER_VAL(normalise_index(AS_NUMBER(start), count));
-    stop = NUMBER_VAL(normalise_index(AS_NUMBER(stop), count));
+    start = NUMBER_VAL(normalise_index_saturated(AS_NUMBER(start), count));
+    stop = NUMBER_VAL(normalise_index_saturated(AS_NUMBER(stop), count));
     push(start);
     push(stop);
     return true;
@@ -780,18 +810,46 @@ static InterpretResult run(void) {
             break;
         }
         case OP_DEL_INDEX: {
+            UPDATE_IP();
             Value index = pop();
-            if (!IS_NUMBER(index)) {
-                RUNTIME_ERROR("Index must be a number.");
+            Value iterable = pop();
+            if (IS_ARRAY(iterable)) {
+                ObjArray *array = AS_ARRAY(iterable);
+                if (!remove_array_index(array, index)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+            }
+            else if (IS_STRING(iterable)) {
+                RUNTIME_ERROR("Can't delete a string index.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            Value array = pop();
-            if (!IS_ARRAY(array)) {
-                RUNTIME_ERROR("Only arrays are indexible.");
+            else {
+                RUNTIME_ERROR("Only arrays and stringw can be indexed.");
+                return INTERPRET_RUNTIME_ERROR;
             }
-            Value dummy;
-            if (!remove_value_array(&AS_ARRAY(array)->elements, (size_t)AS_NUMBER(index), &dummy)) {
-                RUNTIME_ERROR("Index %g is out of bounds.", AS_NUMBER(index));
+            break;
+        }
+        case OP_DEL_SLICE: {
+            UPDATE_IP();
+            Value iterable = peek(2);
+            if (IS_ARRAY(iterable)) {
+                ObjArray *array = AS_ARRAY(iterable);
+                if (!normalise_slice(array->elements.count)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                size_t stop = AS_NUMBER(pop());
+                size_t start = AS_NUMBER(pop());
+                if (start < stop) {
+                    shift_value_array(&array->elements, stop, -(long long)(stop - start));
+                }
+                pop();  // Array.
+            }
+            else if (IS_STRING(iterable)) {
+                RUNTIME_ERROR("Can't delete a string slice.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            else {
+                RUNTIME_ERROR("Only arrays and strings can be indexed.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
@@ -929,10 +987,16 @@ static InterpretResult run(void) {
             Value iterable = pop();
             UPDATE_IP();
             if (IS_ARRAY(iterable)) {
-                get_array_index(AS_ARRAY(iterable), index);
+                ObjArray *array = AS_ARRAY(iterable);
+                if (!get_array_index(array, index)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
             }
             else if (IS_STRING(iterable)) {
-                get_string_index(AS_STRING(iterable), index);
+                ObjString *string = AS_STRING(iterable);
+                if (!get_string_index(string, index)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
             }
             else {
                 RUNTIME_ERROR("Only arrays and strings can be indexed.");
@@ -950,7 +1014,10 @@ static InterpretResult run(void) {
             Value iterable = pop();
             UPDATE_IP();
             if (IS_ARRAY(iterable)) {
-                set_array_index(AS_ARRAY(iterable), index, value);
+                ObjArray *array = AS_ARRAY(iterable);
+                if (!set_array_index(array, index, value)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
             }
             else if (IS_STRING(iterable)) {
                 RUNTIME_ERROR("Can't set a string index.");

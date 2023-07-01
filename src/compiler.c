@@ -477,6 +477,15 @@ static void add_local(Token name, bool is_mutable) {
     local->is_alive = true;
 }
 
+static void slice_or_index(TokenType slice_next_part) {
+    if (!check(slice_next_part)) {
+        expression();
+    }
+    else {
+        emit_byte(OP_NIL);
+    }
+}
+
 static void declare_variable(bool is_mutable) {
     if (current->scope_depth == 0) return;
 
@@ -636,26 +645,11 @@ static void grouping(bool can_assign) {
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
-static void slice(void) {
-    // Note: we emit OP_NIL if the user didn't provide a specific index/step.
-    if (check(TOKEN_RIGHT_BRACKET)) {
-        emit_byte(OP_NIL);
-    }
-    else {
-        expression();  // End index.
-    }
-}
-
 static void index(bool can_assign) {
     uint8_t get_op, set_op;
-    if (check(TOKEN_COLON)) {
-        emit_byte(OP_NIL);  // Empty start index of slice.
-    }
-    else {
-        expression();  // Index (or start index of slice).
-    }
+    slice_or_index(TOKEN_COLON);
     if (match(TOKEN_COLON)) {
-        slice();
+        slice_or_index(TOKEN_RIGHT_BRACKET);
         get_op = OP_GET_SLICE;
         set_op = OP_SET_SLICE;
     }
@@ -1018,25 +1012,44 @@ static void delete_property(void) {
 }
 
 static void delete_index(void) {
-    expression();  // Index.
-    consume(TOKEN_RIGHT_BRACKET, "Expect ']' after index in deletion target.");
+    uint8_t get_op, del_op;
+    slice_or_index(TOKEN_COLON);  // Index or slice start.
+    if (match(TOKEN_COLON)) {
+        slice_or_index(TOKEN_RIGHT_BRACKET);
+        get_op = OP_GET_SLICE;
+        del_op = OP_DEL_SLICE;
+    }
+    else {
+        get_op = OP_GET_INDEX;
+        del_op = OP_DEL_INDEX;
+    }
+    consume(TOKEN_RIGHT_BRACKET, "Expect ']' after index or slice in deletion target.");
     while (!check(TOKEN_SEMICOLON) && !check(TOKEN_EOF)) {
         if (check(TOKEN_DOT) || check(TOKEN_LEFT_PAREN)) {
             // It was actually a property.
-            emit_byte(OP_GET_INDEX);
+            emit_byte(get_op);
             delete_property();
             return;
         }
         else if (match(TOKEN_LEFT_BRACKET)) {
-            emit_byte(OP_GET_INDEX);
-            expression();  // New index.
-            consume(TOKEN_RIGHT_BRACKET, "Expect ']' after index in deletion target.");
+            emit_byte(get_op);
+            slice_or_index(TOKEN_COLON);
+            if (match(TOKEN_COLON)) {
+                slice_or_index(TOKEN_RIGHT_BRACKET);
+                get_op = OP_GET_SLICE;
+                del_op = OP_DEL_SLICE;
+            }
+            else {
+                get_op = OP_GET_INDEX;
+                del_op = OP_DEL_INDEX;
+            }
+            consume(TOKEN_RIGHT_BRACKET, "Expect ']' after index or slice in deletion target.");
         }
         else {
-            error_at_current("Expect '[', '.' or ';' after index in deletion target");
+            error_at_current("Expect '[', '.' or ';' after index or slice in deletion target");
         }
     }
-    emit_byte(OP_DEL_INDEX);
+    emit_byte(del_op);
 }
 
 static void delete_variable(void) {
