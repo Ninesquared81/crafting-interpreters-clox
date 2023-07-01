@@ -152,6 +152,51 @@ ObjString *copy_string(const char *chars, int length) {
     return allocate_string(heap_chars, length, hash);
 }
 
+ObjString *to_repr_string(Value value) {
+    if (IS_STRING(value)) {
+        ObjString *string = AS_STRING(value);
+        char *heap_chars = ALLOCATE(char, string->length + 2 + 1);
+        heap_chars[0] = '"';
+        memcpy(&heap_chars[1], string->chars, string->length);
+        int new_length = string->length + 2;
+        heap_chars[new_length - 1] = '"';
+        heap_chars[new_length] = '\0';
+        return take_string(heap_chars, new_length);
+    }
+    else {
+        return to_string(value);
+    }
+}
+
+static ObjString *array_to_string(ObjArray *array) {
+    int length = 0;
+    size_t capacity = 2 + 1;  // 2 for '[' and ']'; +1 for '\0'.
+    char *chars = ALLOCATE(char, capacity);
+    chars[length++] = '[';
+    ValueArray *elements = &array->elements;
+    if (array->elements.count != 0) {
+        ObjString *element = to_repr_string(elements->values[0]);
+        size_t old_capacity = capacity;
+        capacity += element->length;
+        chars = GROW_ARRAY(char, chars, old_capacity, capacity);
+        memcpy(&chars[length], element->chars, element->length);
+        length += element->length;
+        for (size_t i = 1; i < elements->count; ++i) {
+            element = to_repr_string(elements->values[i]);
+            old_capacity = capacity;
+            capacity += 2 + element->length;  // +2 for ", ".
+            chars = GROW_ARRAY(char, chars, old_capacity, capacity);
+            chars[length++] = ',';
+            chars[length++] = ' ';
+            memcpy(&chars[length], element->chars, element->length);
+            length += element->length;
+        }
+    }
+    chars[length++] = ']';
+    chars[length] = '\0';
+    return take_string(chars, length);
+}
+
 ObjString *to_string(Value value) {
     switch (value.type) {
     case VAL_BOOL:
@@ -169,6 +214,8 @@ ObjString *to_string(Value value) {
         switch (AS_OBJ(value)->type) {
         case OBJ_STRING:
             return AS_STRING(value);
+        case OBJ_ARRAY:
+            return array_to_string(AS_ARRAY(value));
         case OBJ_CLOSURE: {
             ObjString *name = AS_CLOSURE(value)->function->name;
             if (name == NULL) return FROM_STRING_LITERAL("<script>");
