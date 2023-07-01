@@ -123,9 +123,10 @@ ObjInstance *new_instance(ObjClass *class);
 ObjNative *new_native(NativeFn function, ulong arity);
 ObjString *take_string(char *chars, int length);
 ObjString *copy_string(const char *chars, int length);
+ObjString *to_repr_string(Value value);
 ObjString *to_string(Value value);
 ObjUpvalue *new_upvalue(Value *slot);
-void print_object(Value value);
+//void print_object(Value value);
 
 static inline bool is_obj_type(Value value, ObjType type) {
     return IS_OBJ(value) && AS_OBJ(value)->type == type;

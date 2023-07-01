@@ -245,6 +245,7 @@ ObjUpvalue *new_upvalue(Value *slot) {
     return upvalue;
 }
 
+/*
 static void print_array(ObjArray *array) {
     printf("[");
     size_t count = array->elements.count;
@@ -301,3 +302,4 @@ void print_object(Value value) {
         break;
     }
 }
+*/
