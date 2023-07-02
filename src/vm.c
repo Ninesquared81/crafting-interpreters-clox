@@ -1001,10 +1001,6 @@ static InterpretResult run(void) {
         }
         case OP_GET_INDEX: {
             Value index = pop();
-            if (!IS_NUMBER(index)) {
-                RUNTIME_ERROR("Index must be a number.");
-                return INTERPRET_RUNTIME_ERROR;
-            }
             Value iterable = pop();
             UPDATE_IP();
             if (IS_ARRAY(iterable)) {
@@ -1019,8 +1015,16 @@ static InterpretResult run(void) {
                     return INTERPRET_RUNTIME_ERROR;
                 }
             }
+            else if (IS_DICT(iterable)) {
+                ObjDict *dict = AS_DICT(iterable);
+                Value value;
+                if (!table_get(&dict->contents, key_from_value(index), &value)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                push(value);
+            }
             else {
-                RUNTIME_ERROR("Only arrays and strings can be indexed.");
+                RUNTIME_ERROR("Only arrays, dicts and strings can be indexed.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
@@ -1028,10 +1032,6 @@ static InterpretResult run(void) {
         case OP_SET_INDEX: {
             Value value = pop();  // The value to be set.
             Value index = pop();
-            if (!IS_NUMBER(index)) {
-                RUNTIME_ERROR("Index must be a number.");
-                return INTERPRET_RUNTIME_ERROR;
-            }
             Value iterable = pop();
             UPDATE_IP();
             if (IS_ARRAY(iterable)) {
@@ -1048,7 +1048,7 @@ static InterpretResult run(void) {
                 table_set(&dict->contents, key_from_value(index), value);
             }
             else {
-                RUNTIME_ERROR("Only arrays and strings can be indexed.");
+                RUNTIME_ERROR("Only arrays, dicts and strings can be indexed.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
