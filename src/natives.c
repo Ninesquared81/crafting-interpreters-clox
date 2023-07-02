@@ -176,8 +176,12 @@ static bool len_native(ulong arg_count, Value *args, Value *result) {
         ObjString *string = AS_STRING(iterable);
         *result = NUMBER_VAL((double)string->length);
     }
+    else if (IS_DICT(iterable)) {
+        ObjDict *dict = AS_DICT(iterable);
+        *result = NUMBER_VAL((double)dict->length);
+    }
     else {
-        runtime_error("Argument to len() must be an array or string.");
+        runtime_error("Argument to len() must be an array, dict or string.");
         return false;
     }
     return true;
