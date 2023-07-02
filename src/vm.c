@@ -392,7 +392,32 @@ static void concatenate_arrays(void) {
     pop();
     push(OBJ_VAL(new));
 }
-    
+
+static void extend_dict(ObjDict *dict, ObjDict *with) {
+    for (ulong i = 0; i < with->length; ++i) {
+        Entry *entry = &with->contents.entries[i];
+        if (IS_UNOCCUPIED(entry->key)) {
+            continue;
+        }
+        if (table_set(&dict->contents, entry->key, entry->value)) {
+            // New key, so update length.
+            ++dict->length;
+        }
+    }
+}
+
+static void join_dicts(void) {
+    ObjDict *b = AS_DICT(peek(0));
+    ObjDict *a = AS_DICT(peek(1));
+    ObjDict *new = copy_dict(a);
+    push(OBJ_VAL(new));
+    extend_dict(new, b);
+    pop();  // New array.
+    pop();
+    pop();
+    push(OBJ_VAL(new));
+}
+
 static double normalise_index(double index, size_t count) {
     if (index < 0) {
         index += count;
@@ -958,6 +983,9 @@ static InterpretResult run(void) {
             }
             else if (IS_ARRAY(peek(0)) && IS_ARRAY(peek(1))) {
                 concatenate_arrays();
+            }
+            else if (IS_DICT(peek(0)) && IS_DICT(peek(1))) {
+                join_dicts();
             }
             else {
                 RUNTIME_ERROR("Operands must be two numbers or two strings.");
