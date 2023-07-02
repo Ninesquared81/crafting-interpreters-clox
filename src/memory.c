@@ -95,6 +95,11 @@ static void blacken_object(Obj *object) {
         }
         break;
     }
+    case OBJ_DICT: {
+        ObjDict *dict = (ObjDict *)object;
+        mark_table(&dict->contents);
+        break;
+    }
     case OBJ_FUNCTION: {
         ObjFunction *function = (ObjFunction *)object;
         mark_object((Obj *)function->name);
@@ -125,6 +130,12 @@ static void free_object(Obj *object) {
     printf("'\n");
 #endif
     switch (object->type) {
+    case OBJ_ARRAY: {
+        ObjArray *array = (ObjArray *)object;
+        free_value_array(&array->elements);
+        FREE(ObjArray, object);
+        break;
+    }
     case OBJ_BOUND_METHOD:
         FREE(ObjBoundMethod, object);
         break;
@@ -138,6 +149,12 @@ static void free_object(Obj *object) {
         ObjClosure *closure = (ObjClosure *)object;
         FREE_ARRAY(ObjUpvalue*, closure->upvalues, closure->upvalue_count);
         FREE(ObjClosure, object);
+        break;
+    }
+    case OBJ_DICT: {
+        ObjDict *dict = (ObjDict *)object;
+        free_table(&dict->contents);
+        FREE(ObjDict, object);
         break;
     }
     case OBJ_FUNCTION: {
