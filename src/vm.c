@@ -988,7 +988,8 @@ static InterpretResult run(void) {
                 join_dicts();
             }
             else {
-                RUNTIME_ERROR("Operands must be two numbers or two strings.");
+                RUNTIME_ERROR("Operands must be two numbers, two arrays, two dicts,"
+                              " or any value and a string.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
