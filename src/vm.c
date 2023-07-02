@@ -237,6 +237,7 @@ static void create_dict(ulong length) {
         Value value = key[1];
         table_set(&dict->contents, key_from_value(*key), value);
     }
+    popn(2 * length);  // Pop all the key-value pairs.
     push(OBJ_VAL(dict));
 }
 
