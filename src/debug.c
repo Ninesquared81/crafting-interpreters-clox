@@ -207,6 +207,10 @@ int disassemble_instruction(Chunk *chunk, int offset) {
         return byte_instruction("OP_ARRAY", chunk, offset);
     case OP_ARRAY_LONG:
         return byte_instruction("OP_ARRAY_LONG", chunk, offset);
+    case OP_DICT:
+        return byte_instruction("OP_DICT", chunk, offset);
+    case OP_DICT_LONG:
+        return byte_instruction("OP_DICT_LONG", chunk, offset);
     case OP_GET_INDEX:
         return simple_instruction("OP_GET_INDEX", offset);
     case OP_SET_INDEX:

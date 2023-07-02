@@ -174,6 +174,33 @@ Value key_as_value(Key key) {
     }
 }
 
+Key key_from_value(Value value) {
+    Key key;
+    switch (value.type) {
+    case VAL_NUMBER:
+        key.type = KEY_NUMBER;
+        key.as.number = AS_NUMBER(value);
+        break;
+    case VAL_BOOL:
+        key.type = KEY_BOOL;
+        key.as.boolean = AS_BOOL(value);
+        break;
+    case VAL_NIL:
+        key.type = KEY_NIL;
+        break;
+    case VAL_OBJ:
+        if (IS_STRING(value)) {
+            key.type = KEY_STRING;
+            key.as.string = AS_STRING(value);
+        }
+        else {
+            key.type = KEY_EMPTY;  // Error case.
+        }
+        break;
+    }
+    return key;
+}
+
 void table_remove_white(Table *table) {
     for (int i = 0; i < table->capacity; ++i) {
         Entry *entry = &table->entries[i];

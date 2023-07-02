@@ -27,6 +27,7 @@
      || (opcode) == OP_GET_SUPER_LONG           \
      || (opcode) == OP_SUPER_INVOKE_LONG        \
      || (opcode) == OP_ARRAY_LONG               \
+     || (opcode) == OP_DICT_LONG                \
         )
 
 typedef enum {
@@ -80,6 +81,8 @@ typedef enum {
     OP_LOOP,
     OP_ARRAY,
     OP_ARRAY_LONG,
+    OP_DICT,
+    OP_DICT_LONG,
     OP_GET_INDEX,
     OP_SET_INDEX,
     OP_GET_SLICE,

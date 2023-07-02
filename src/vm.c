@@ -230,6 +230,15 @@ static void create_array(ulong length) {
     push(OBJ_VAL(array));
 }
 
+static void create_dict(ulong length) {
+    ObjDict *dict = new_dict();
+    for (Value *key = &vm.stack_top[-2 * (long long)length]; key < vm.stack_top; key += 2) {
+        Value value = key[1];
+        table_set(&dict->contents, key_from_value(*key), value);
+    }
+    push(OBJ_VAL(dict));
+}
+
 static bool invoke_from_class(ObjClass *class, ObjString *name, ulong arg_count) {
     Value method;
     if (!table_get(&class->methods, STRING_KEY(name), &method)) {
@@ -978,6 +987,18 @@ static InterpretResult run(void) {
             create_array(length);
             break;
         }
+        case OP_DICT: {
+            ulong length = READ_BYTE();
+            UPDATE_IP();
+            create_dict(length);
+            break;
+        }
+        case OP_DICT_LONG: {
+            ulong length = READ_BYTES();
+            UPDATE_IP();
+            create_dict(length);
+            break;
+        }
         case OP_GET_INDEX: {
             Value index = pop();
             if (!IS_NUMBER(index)) {
@@ -1021,6 +1042,10 @@ static InterpretResult run(void) {
             }
             else if (IS_STRING(iterable)) {
                 RUNTIME_ERROR("Can't set a string index.");
+            }
+            else if (IS_DICT(iterable)) {
+                ObjDict *dict = AS_DICT(iterable);
+                table_set(&dict->contents, Key_from_value(index), value);
             }
             else {
                 RUNTIME_ERROR("Only arrays and strings can be indexed.");

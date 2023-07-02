@@ -597,6 +597,25 @@ static void call(bool can_assign) {
     emit_varint_instruction(OP_CALL, arg_count);
 }
 
+static void dict(bool can_assign) {
+    (void)can_assign;
+    ulong length = 0;
+    do {
+        if (check(TOKEN_RIGHT_BRACE)) {
+            break;
+        }
+        expression();  // Key.
+        consume(TOKEN_COLON, "Expect ':' after key in dict literal");
+        expression();  // Value.
+        if (length == UINT24_MAX) {
+            error("Too many elements in dict literal.");
+        }
+        ++length;
+    } while (match(TOKEN_COMMA));
+    consume(TOKEN_RIGHT_BRACE, "Expect '}' after dict elements.");
+    emit_varint_instruction(OP_DICT, length);
+}
+
 static void dot(bool can_assign) {
     consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
     uint32_t name = identifier_constant(&parser.previous);
@@ -788,7 +807,7 @@ static void unary(bool can_assign) {
 ParseRule rules[] = {
     [TOKEN_LEFT_PAREN]    = {grouping,   call,        PREC_CALL},
     [TOKEN_RIGHT_PAREN]   = {NULL,       NULL,        PREC_NONE},
-    [TOKEN_LEFT_BRACE]    = {NULL,       NULL,        PREC_NONE},
+    [TOKEN_LEFT_BRACE]    = {dict,       NULL,        PREC_NONE},
     [TOKEN_RIGHT_BRACE]   = {NULL,       NULL,        PREC_NONE},
     [TOKEN_LEFT_BRACKET]  = {array,      index,       PREC_CALL},
     [TOKEN_RIGHT_BRACKET] = {NULL,       NULL,        PREC_NONE},

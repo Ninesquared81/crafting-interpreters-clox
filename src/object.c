@@ -17,6 +17,7 @@ const char *const obj_type_names[] = {
     [OBJ_BOUND_METHOD] = "OBJ_BOUND_METHOD",
     [OBJ_CLASS] = "OBJ_CLASS",
     [OBJ_CLOSURE] = "OBJ_CLOSURE",
+    [OBJ_DICT] = "OBJ_DICT",
     [OBJ_FUNCTION] = "OBJ_FUNCTION",
     [OBJ_INSTANCE] = "OBJ_INSTANCE",
     [OBJ_NATIVE] = "OBJ_NATIVE",
@@ -24,7 +25,7 @@ const char *const obj_type_names[] = {
     [OBJ_UPVALUE] = "OBJ_UPVALUE",
 };
 
-#define ARRAY_COUNT 9
+#define ARRAY_COUNT 10
 static_assert(ARRAY_COUNT == OBJ_TYPE_COUNT);
 #undef ARRAY_COUNT
 
@@ -81,6 +82,18 @@ ObjClosure *new_closure(ObjFunction *function) {
     closure->upvalues = upvalues;
     closure->upvalue_count = function->upvalue_count;
     return closure;
+}
+
+ObjDict *new_dict(void) {
+    ObjDict *dict = ALLOCATE_OBJ(ObjDict, OBJ_DICT);
+    init_table(&dict->contents);
+    return dict;
+}
+
+ObjDict *copy_dict(ObjDict *from) {
+    ObjDict *dict = new_dict();
+    table_add_all(&from->contents, &dict->contents);
+    return dict;
 }
 
 ObjFunction *new_function(void) {
