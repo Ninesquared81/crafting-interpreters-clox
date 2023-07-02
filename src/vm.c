@@ -1045,7 +1045,7 @@ static InterpretResult run(void) {
             }
             else if (IS_DICT(iterable)) {
                 ObjDict *dict = AS_DICT(iterable);
-                table_set(&dict->contents, Key_from_value(index), value);
+                table_set(&dict->contents, key_from_value(index), value);
             }
             else {
                 RUNTIME_ERROR("Only arrays and strings can be indexed.");

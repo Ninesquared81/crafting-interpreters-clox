@@ -8,6 +8,7 @@
 #define TOMBSTONE_KEY     ((Key){.type = KEY_TOMBSTONE})
 
 #define IS_HASHABLE(value) (IS_STRING(value) || !IS_OBJ(value))
+#define IS_UNOCCUPIED(key) ((key).type == KEY_EMPTY || (key).type == KEY_TOMBSTONE)
 
 #define STRING_KEY(value) ((Key){.type = KEY_STRING, .as.string = (value)})
 #define NUMBER_KEY(value) ((Key){.type = KEY_NUMBER, .as.number = (value)})

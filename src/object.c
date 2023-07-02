@@ -210,6 +210,51 @@ static ObjString *array_to_string(ObjArray *array) {
     return take_string(chars, length);
 }
 
+static ObjString *dict_to_string(ObjDict *dict) {
+    int length = 0;
+    size_t capacity = 2 + 1;
+    char *heap_chars = ALLOCATE(char, capacity);
+    heap_chars[length++] = '{';
+    if (dict->contents.count > 0) {
+        Entry *entry = dict->contents.entries;
+        while (IS_UNOCCUPIED(entry->key)) {
+            ++entry;
+        }
+        ObjString *key = to_repr_string(key_as_value(entry->key));
+        ObjString *value = to_repr_string(entry->value);
+        size_t old_capacity = capacity;
+        capacity += key->length + 2 + value->length;
+        heap_chars = GROW_ARRAY(char, heap_chars, old_capacity, capacity);
+        memcpy(&heap_chars[length], key->chars, key->length);
+        length += key->length;
+        heap_chars[length++] = ':';
+        heap_chars[length++] = ' ';
+        memcpy(&heap_chars[length], value->chars, value->length);
+        length += value->length;
+        for (int i = 1; i < dict->contents.count; ++i) {
+            do {
+                ++entry;
+            } while (IS_UNOCCUPIED(entry->key));
+            key = to_repr_string(key_as_value(entry->key));
+            value = to_repr_string(entry->value);
+            old_capacity = capacity;
+            capacity += 2 + key->length + 2 + value->length;
+            heap_chars = GROW_ARRAY(char, heap_chars, old_capacity, capacity);
+            heap_chars[length++] = ',';
+            heap_chars[length++] = ' ';
+            memcpy(&heap_chars[length], key->chars, key->length);
+            length += key->length;
+            heap_chars[length++] = ':';
+            heap_chars[length++] = ' ';
+            memcpy(&heap_chars[length], value->chars, value->length);
+            length += value->length;
+        }
+    }
+    heap_chars[length++] = '}';
+    heap_chars[length] = '\0';
+    return take_string(heap_chars, length);
+}
+
 ObjString *to_string(Value value) {
     switch (value.type) {
     case VAL_BOOL:
@@ -234,6 +279,8 @@ ObjString *to_string(Value value) {
             if (name == NULL) return FROM_STRING_LITERAL("<script>");
             return name;
         }
+        case OBJ_DICT:
+            return dict_to_string(AS_DICT(value));
         case OBJ_FUNCTION: {
             ObjString *name = AS_FUNCTION(value)->name;
             if (name == NULL) return FROM_STRING_LITERAL("<script>");

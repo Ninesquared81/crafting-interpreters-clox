@@ -8,8 +8,6 @@
 
 #define TABLE_MAX_LOAD 0.75
 
-#define IS_UNOCCUPIED(key) ((key).type == KEY_EMPTY || (key).type == KEY_TOMBSTONE)
-
 void init_table(Table *table) {
     table->count = 0;
     table->capacity = 0;
