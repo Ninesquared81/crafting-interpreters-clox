@@ -232,6 +232,7 @@ static void create_array(ulong length) {
 
 static void create_dict(ulong length) {
     ObjDict *dict = new_dict();
+    dict->length = length;
     for (Value *key = &vm.stack_top[-2 * (long long)length]; key < vm.stack_top; key += 2) {
         Value value = key[1];
         table_set(&dict->contents, key_from_value(*key), value);
@@ -448,6 +449,44 @@ static bool remove_array_index(ObjArray *array, Value index) {
         runtime_error("Index %g is out of bounds.", AS_NUMBER(index));
         return false;
     }
+    return true;
+}
+
+static bool get_dict_key(ObjDict *dict, Value key) {
+    if (!IS_HASHABLE(key)) {
+        runtime_error("Key must be a hashable type.");
+        return false;
+    }
+    Value value;
+    if (!table_get(&dict->contents, key_from_value(key), &value)) {
+        runtime_error("Unknown key %s.", to_repr_string(key)->chars);
+        return false;
+    }
+    push(value);
+    return true;
+}
+
+static bool set_dict_key(ObjDict *dict, Value key, Value value) {
+    if (!IS_HASHABLE(key)) {
+        runtime_error("Key must be a hashable type.");
+        return false;
+    }
+    if (table_set(&dict->contents, key_from_value(key), value)) {
+        ++dict->length;
+    }
+    return true;
+}
+
+static bool remove_dict_key(ObjDict *dict, Value key) {
+    if (!IS_HASHABLE(key)) {
+        runtime_error("Key must be a hashable type.");
+        return false;
+    }
+    if (!table_delete(&dict->contents, key_from_value(key))) {
+        runtime_error("Unknown key %s.", to_repr_string(key)->chars);
+        return false;
+    }
+    --dict->length;
     return true;
 }
 
@@ -828,12 +867,18 @@ static InterpretResult run(void) {
                     return INTERPRET_RUNTIME_ERROR;
                 }
             }
+            else if (IS_DICT(iterable)) {
+                ObjDict *dict = AS_DICT(iterable);
+                if (!remove_dict_key(dict, index)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+            }
             else if (IS_STRING(iterable)) {
                 RUNTIME_ERROR("Can't delete a string index.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             else {
-                RUNTIME_ERROR("Only arrays and stringw can be indexed.");
+                RUNTIME_ERROR("Only arrays, dicts and strings can be indexed.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
@@ -858,7 +903,7 @@ static InterpretResult run(void) {
                 return INTERPRET_RUNTIME_ERROR;
             }
             else {
-                RUNTIME_ERROR("Only arrays and strings can be indexed.");
+                RUNTIME_ERROR("Only arrays and strings can be sliced.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
@@ -1017,11 +1062,9 @@ static InterpretResult run(void) {
             }
             else if (IS_DICT(iterable)) {
                 ObjDict *dict = AS_DICT(iterable);
-                Value value;
-                if (!table_get(&dict->contents, key_from_value(index), &value)) {
+                if (!get_dict_key(dict, index)) {
                     return INTERPRET_RUNTIME_ERROR;
                 }
-                push(value);
             }
             else {
                 RUNTIME_ERROR("Only arrays, dicts and strings can be indexed.");
@@ -1045,7 +1088,9 @@ static InterpretResult run(void) {
             }
             else if (IS_DICT(iterable)) {
                 ObjDict *dict = AS_DICT(iterable);
-                table_set(&dict->contents, key_from_value(index), value);
+                if (!set_dict_key(dict, index, value)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
             }
             else {
                 RUNTIME_ERROR("Only arrays, dicts and strings can be indexed.");

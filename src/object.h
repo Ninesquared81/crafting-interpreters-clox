@@ -119,6 +119,7 @@ typedef struct {
 typedef struct {
     Obj obj;
     Table contents;
+    ulong length;
 } ObjDict;
 
 ObjArray *new_array(void);

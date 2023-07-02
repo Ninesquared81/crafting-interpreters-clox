@@ -87,12 +87,14 @@ ObjClosure *new_closure(ObjFunction *function) {
 ObjDict *new_dict(void) {
     ObjDict *dict = ALLOCATE_OBJ(ObjDict, OBJ_DICT);
     init_table(&dict->contents);
+    dict->length = 0;
     return dict;
 }
 
 ObjDict *copy_dict(ObjDict *from) {
     ObjDict *dict = new_dict();
     table_add_all(&from->contents, &dict->contents);
+    dict->length = from->length;
     return dict;
 }
 
@@ -215,7 +217,7 @@ static ObjString *dict_to_string(ObjDict *dict) {
     size_t capacity = 2 + 1;
     char *heap_chars = ALLOCATE(char, capacity);
     heap_chars[length++] = '{';
-    if (dict->contents.count > 0) {
+    if (dict->length != 0) {
         Entry *entry = dict->contents.entries;
         while (IS_UNOCCUPIED(entry->key)) {
             ++entry;
@@ -231,7 +233,7 @@ static ObjString *dict_to_string(ObjDict *dict) {
         heap_chars[length++] = ' ';
         memcpy(&heap_chars[length], value->chars, value->length);
         length += value->length;
-        for (int i = 1; i < dict->contents.count; ++i) {
+        for (ulong i = 1; i < dict->length; ++i) {
             do {
                 ++entry;
             } while (IS_UNOCCUPIED(entry->key));
