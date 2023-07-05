@@ -151,6 +151,15 @@ static bool arrays_equal(ValueArray *a, ValueArray *b) {
 }
 
 bool values_equal(Value a, Value b) {
+#ifdef NAN_BOXING
+    if (IS_NUMBER(a) && IS_NUMBER(b)) {
+        return AS_NUMBER(a) == AS_NUMBER(b);
+    }
+    else if (IS_ARRAY(a) && IS_ARRAY(b)) {
+        return arrays_equal(&AS_ARRAY(a)->elements, &AS_ARRAY(b)->elements);
+    }
+    return a == b;
+#else
     if (a.type != b.type) return false;
     switch (a.type) {
     case VAL_BOOL:   return AS_BOOL(a) ==  AS_BOOL(b);
@@ -165,6 +174,7 @@ bool values_equal(Value a, Value b) {
         }
     default:         return false;  // Unreachable.
     }
+#endif
 }
 
 uint32_t hash_double(double number) {

@@ -22,8 +22,8 @@ void free_table(Table *table) {
 static uint32_t hash_of(Key key) {
     switch (key.type) {
     case KEY_STRING: return key.as.string->hash;
-    case KEY_NUMBER: return HASH_NUMBER(key);
-    case KEY_BOOL:   return HASH_BOOL(key);
+    case KEY_NUMBER: return HASH_NUMBER(key_as_value(key));
+    case KEY_BOOL:   return HASH_BOOL(key_as_value(key));
     case KEY_NIL:    return HASH_NIL;
     default:         return 0;  // Unreachable.
     }
@@ -174,6 +174,26 @@ Value key_as_value(Key key) {
 
 Key key_from_value(Value value) {
     Key key;
+#ifdef NAN_BOXING
+    if (IS_NUMBER(value)) {
+        key.type = KEY_NUMBER;
+        key.as.number = AS_NUMBER(value);
+    }
+    else if (IS_BOOL(value)) {
+        key.type = KEY_BOOL;
+        key.as.boolean = AS_BOOL(value);
+    }
+    else if (IS_NIL(value)) {
+        key.type = KEY_NIL;
+    }
+    else if (IS_STRING(value)) {
+        key.type = KEY_STRING;
+        key.as.string = AS_STRING(value);
+    }
+    else {
+        key.type = KEY_EMPTY;
+    }
+#else
     switch (value.type) {
     case VAL_NUMBER:
         key.type = KEY_NUMBER;
@@ -196,6 +216,7 @@ Key key_from_value(Value value) {
         }
         break;
     }
+#endif
     return key;
 }
 

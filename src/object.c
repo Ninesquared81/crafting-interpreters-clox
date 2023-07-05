@@ -257,45 +257,72 @@ static ObjString *dict_to_string(ObjDict *dict) {
     return take_string(heap_chars, length);
 }
 
+static ObjString *obj_to_string(Obj *object) {
+    switch (object->type) {
+    case OBJ_STRING:
+        return (ObjString *)object;
+    case OBJ_ARRAY:
+        return array_to_string((ObjArray *)object);
+    case OBJ_CLOSURE: {
+        ObjString *name = ((ObjClosure *)object)->function->name;
+        if (name == NULL) return FROM_STRING_LITERAL("<script>");
+        return name;
+    }
+    case OBJ_DICT:
+        return dict_to_string((ObjDict *)object);
+    case OBJ_FUNCTION: {
+        ObjString *name = ((ObjFunction *)object)->name;
+        if (name == NULL) return FROM_STRING_LITERAL("<script>");
+        return name;
+    }
+    case OBJ_NATIVE:
+        return FROM_STRING_LITERAL("<native fn>");
+    default:
+        return FROM_STRING_LITERAL("<Unknown object>");  // Unreachable.
+    }
+}
+
+static ObjString *number_to_string(double number) {
+    size_t size = snprintf(NULL, 0, "%g", number) + 1;
+    char *chars = (char *)reallocate(NULL, 0, size);
+    snprintf(chars, size, "%g", number);
+    return take_string(chars, size - 1);
+}
+
 ObjString *to_string(Value value) {
+#ifdef NAN_BOXING
+    if (IS_BOOL(value)) {
+        return (AS_BOOL(value)) ?
+            /* NOTE: The repeated macros are required because they use sizeof */
+            FROM_STRING_LITERAL("true") : FROM_STRING_LITERAL("false");
+    }
+    else if (IS_NIL(value)) {
+        return FROM_STRING_LITERAL("nil");
+    }
+    else if (IS_NUMBER(value)) {
+        return number_to_string(AS_NUMBER(value));
+    }
+    else if (IS_OBJ(value)) {
+        return obj_to_string(AS_OBJ(value));
+    }
+    else {
+        return FROM_STRING_LITERAL("<Unknown value>");
+    }
+#else
     switch (value.type) {
     case VAL_BOOL:
         return (value.as.boolean) ?
             FROM_STRING_LITERAL("true") : FROM_STRING_LITERAL("false");
     case VAL_NIL:
         return FROM_STRING_LITERAL("nil");
-    case VAL_NUMBER: {
-        size_t size = snprintf(NULL, 0, "%g", value.as.number) + 1;
-        char *chars = (char *)reallocate(NULL, 0, size);
-        snprintf(chars, size, "%g", value.as.number);
-        return take_string(chars, size - 1);
-    }
+    case VAL_NUMBER:
+        return number_to_string(AS_NUMBER(value));
     case VAL_OBJ:
-        switch (AS_OBJ(value)->type) {
-        case OBJ_STRING:
-            return AS_STRING(value);
-        case OBJ_ARRAY:
-            return array_to_string(AS_ARRAY(value));
-        case OBJ_CLOSURE: {
-            ObjString *name = AS_CLOSURE(value)->function->name;
-            if (name == NULL) return FROM_STRING_LITERAL("<script>");
-            return name;
-        }
-        case OBJ_DICT:
-            return dict_to_string(AS_DICT(value));
-        case OBJ_FUNCTION: {
-            ObjString *name = AS_FUNCTION(value)->name;
-            if (name == NULL) return FROM_STRING_LITERAL("<script>");
-            return name;
-        }
-        case OBJ_NATIVE:
-            return FROM_STRING_LITERAL("<native fn>");
-        default:
-            return FROM_STRING_LITERAL("<Unknown object>");  // Unreachable.
-        }
+        return obj_to_string(AS_OBJ(value));
     default:
         return FROM_STRING_LITERAL("<Unknown value>");  // Unreachable.
     }
+#endif
 }
 
 ObjUpvalue *new_upvalue(Value *slot) {
