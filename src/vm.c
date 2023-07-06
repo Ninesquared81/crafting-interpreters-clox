@@ -230,15 +230,21 @@ static void create_array(ulong length) {
     push(OBJ_VAL(array));
 }
 
-static void create_dict(ulong length) {
+static bool create_dict(ulong length) {
     ObjDict *dict = new_dict();
     dict->length = length;
-    for (Value *key = &vm.stack_top[-2 * (long long)length]; key < vm.stack_top; key += 2) {
-        Value value = key[1];
-        table_set(&dict->contents, key_from_value(*key), value);
+    for (Value *index = &vm.stack_top[-2 * (long long)length]; index < vm.stack_top; index += 2) {
+        Key key = key_from_value(*index);
+        if (key.type == KEY_EMPTY) {
+            runtime_error("Dict key must be a hashable type.");
+            return false;
+        }
+        Value value = index[1];
+        table_set(&dict->contents, key, value);
     }
     popn(2 * length);  // Pop all the key-value pairs.
     push(OBJ_VAL(dict));
+    return true;
 }
 
 static bool invoke_from_class(ObjClass *class, ObjString *name, ulong arg_count) {
@@ -1052,26 +1058,28 @@ static InterpretResult run(void) {
         }
         case OP_ARRAY: {
             ulong length = READ_BYTE();
-            UPDATE_IP();
             create_array(length);
             break;
         }
         case OP_ARRAY_LONG: {
             ulong length = READ_BYTES();
-            UPDATE_IP();
             create_array(length);
             break;
         }
         case OP_DICT: {
             ulong length = READ_BYTE();
             UPDATE_IP();
-            create_dict(length);
+            if (!create_dict(length)) {
+                return INTERPRET_RUNTIME_ERROR;
+            }
             break;
         }
         case OP_DICT_LONG: {
             ulong length = READ_BYTES();
             UPDATE_IP();
-            create_dict(length);
+            if (!create_dict(length)) {
+                return INTERPRET_RUNTIME_ERROR;
+            }
             break;
         }
         case OP_GET_INDEX: {
