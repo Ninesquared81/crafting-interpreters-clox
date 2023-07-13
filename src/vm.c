@@ -1022,16 +1022,24 @@ static InterpretResult run(void) {
         case OP_INPUT: {
             char buf[INPUT_MAX];
             fflush(stdout);
-            if (fgets(buf, INPUT_MAX, stdin) == NULL) {
+            fgets(buf, INPUT_MAX, stdin);
+            if (ferror(stdin)) {
                 RUNTIME_ERROR("Error reading from stdin.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            int length = strlen(buf);
-            if (length > 0 && buf[length - 1] == '\n') {
-                // Decrease length and replace '\n' with null byte.
-                buf[--length] = '\0';
+            if (feof(stdin)) {
+                // EOF: send empty string.
+                clearerr(stdin);  // Clear the EOF status.
+                push(OBJ_VAL(FROM_STRING_LITERAL("")));
             }
-            push(parse_value(buf, length));
+            else {
+                int length = strlen(buf);
+                if (length > 0 && buf[length - 1] == '\n') {
+                    // Decrease length and replace '\n' with null byte.
+                    buf[--length] = '\0';
+                }
+                push(parse_value(buf, length));
+            }
             break;
         }
         case OP_PRINT: {
