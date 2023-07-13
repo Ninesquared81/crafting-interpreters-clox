@@ -1114,7 +1114,7 @@ static InterpretResult run(void) {
         case OP_SET_INDEX: {
             Value value = pop();  // The value to be set.
             Value index = pop();
-            Value iterable = pop();
+            Value iterable = peek(0);  // Not popped.
             UPDATE_IP();
             if (IS_ARRAY(iterable)) {
                 ObjArray *array = AS_ARRAY(iterable);
@@ -1176,7 +1176,7 @@ static InterpretResult run(void) {
                 RUNTIME_ERROR("Can only set slice with another array or string.");
             }
             UPDATE_IP();
-            Value iterable = peek(2);
+            Value iterable = peek(2);  // Left on stack to be used in expressions.
             if (IS_ARRAY(iterable)) {
                 ObjArray *array = AS_ARRAY(iterable);
                 normalise_slice(array->elements.count);
@@ -1209,7 +1209,6 @@ static InterpretResult run(void) {
                 RUNTIME_ERROR("Only arrays and strings can be sliced.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            pop();
             break;
         }
         case OP_CALL: {
