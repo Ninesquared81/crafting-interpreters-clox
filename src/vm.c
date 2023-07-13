@@ -1021,6 +1021,7 @@ static InterpretResult run(void) {
             break;
         case OP_INPUT: {
             char buf[INPUT_MAX];
+            fflush(stdout);
             if (fgets(buf, INPUT_MAX, stdin) == NULL) {
                 RUNTIME_ERROR("Error reading from stdin.");
                 return INTERPRET_RUNTIME_ERROR;
