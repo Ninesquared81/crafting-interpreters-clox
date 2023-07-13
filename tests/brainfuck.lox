@@ -40,11 +40,11 @@ for (var ip = 0; ip < len(code); ip = ip + 1) {
             input input_buffer;
             bufp = 0;
         }
-        data[dp] = encode("ascii", input_buffer[bufp])[0];
+        data[dp:dp+1] = encode("ascii", input_buffer[bufp]);
         bufp = bufp + 1;
     }
-    if (code[ip] == ".") {
-        puts(decode("ascii", data[dp]));
+    else if (code[ip] == ".") {
+        puts(decode("ascii", data[dp:dp+1]));
     }
     else if (code[ip] == "[") {
         if (data[dp] == 0) {
