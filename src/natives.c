@@ -160,7 +160,7 @@ static bool puts_native(ulong arg_count, Value *args, Value *result) {
         runtime_error("Argument to puts() must be a string.");
         return false;
     }
-    puts(AS_CSTRING(string));
+    printf("%s", AS_CSTRING(string));
     *result = NIL_VAL;
     return true;
 }
