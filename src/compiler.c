@@ -1284,6 +1284,9 @@ static void input_statement(void) {
     if (arg != (unsigned)-1) {
         set_op = OP_SET_LOCAL;
     }
+    else if ((arg = resolve_upvalue(current, name)) != (unsigned)-1) {
+        set_op = OP_SET_UPVALUE;
+    }
     else {
         arg = identifier_constant(name);
         set_op = OP_SET_GLOBAL;
