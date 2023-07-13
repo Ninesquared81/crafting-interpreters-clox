@@ -1289,6 +1289,7 @@ static void input_statement(void) {
         set_op = OP_SET_GLOBAL;
     }
     emit_varint_instruction(set_op, arg);
+    emit_byte(OP_POP);  // Pop the value left on the stack by the set instruction.
 
     consume(TOKEN_SEMICOLON, "Expect ';' after variable name.");
 }
