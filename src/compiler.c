@@ -58,6 +58,7 @@ typedef struct {
 } Upvalue;
 
 typedef enum {
+    TYPE_ANONYMOUS,
     TYPE_FUNCTION,
     TYPE_INITIALIZER,
     TYPE_METHOD,
@@ -314,7 +315,7 @@ static void init_compiler(Compiler *compiler, FunctionType type) {
     compiler->function = new_function();
     init_loop_stack(&compiler->loops);
     current = compiler;
-    if (type != TYPE_SCRIPT) {
+    if (type != TYPE_SCRIPT && type != TYPE_ANONYMOUS) {
         current->function->name = copy_string(parser.previous.start, parser.previous.length);
     }
 
@@ -387,6 +388,7 @@ static void statement(void);
 static void declaration(void);
 static ParseRule *get_rule(TokenType token);
 static void parse_precedence(Precedence precedence);
+static void function(FunctionType type);
 
 static uint32_t identifier_constant(Token *name) {
     return make_constant(OBJ_VAL(copy_string(name->start, name->length)));
@@ -552,6 +554,11 @@ static void and(bool can_assign) {
     parse_precedence(PREC_AND);
 
     patch_jump(end_jump);
+}
+
+static void anon_fun(bool can_assign) {
+    (void)can_assign;
+    function(TYPE_ANONYMOUS);
 }
 
 static void array(bool can_assign) {
@@ -837,7 +844,7 @@ ParseRule rules[] = {
     [TOKEN_ELSE]          = {NULL,       NULL,        PREC_NONE},
     [TOKEN_FALSE]         = {literal,    NULL,        PREC_NONE},
     [TOKEN_FOR]           = {NULL,       NULL,        PREC_NONE},
-    [TOKEN_FUN]           = {NULL,       NULL,        PREC_NONE},
+    [TOKEN_FUN]           = {anon_fun,   NULL,        PREC_NONE},
     [TOKEN_IF]            = {NULL,       NULL,        PREC_NONE},
     [TOKEN_INPUT]         = {NULL,       NULL,        PREC_NONE},
     [TOKEN_NIL]           = {literal,    NULL,        PREC_NONE},
