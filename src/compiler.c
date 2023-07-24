@@ -316,7 +316,7 @@ static void init_compiler(Compiler *compiler, FunctionType type) {
     init_loop_stack(&compiler->loops);
     current = compiler;
     if (type == TYPE_ANONYMOUS) {
-        current->function->name = FROM_STRING_LITERAL("<anonymous>");
+        current->function->name = FROM_STRING_LITERAL("<anon fn>");
     }
     else if (type != TYPE_SCRIPT) {
         current->function->name = copy_string(parser.previous.start, parser.previous.length);
