@@ -315,7 +315,10 @@ static void init_compiler(Compiler *compiler, FunctionType type) {
     compiler->function = new_function();
     init_loop_stack(&compiler->loops);
     current = compiler;
-    if (type != TYPE_SCRIPT && type != TYPE_ANONYMOUS) {
+    if (type == TYPE_ANONYMOUS) {
+        current->function->name = FROM_STRING_LITERAL("<anonymous>");
+    }
+    else if (type != TYPE_SCRIPT) {
         current->function->name = copy_string(parser.previous.start, parser.previous.length);
     }
 
