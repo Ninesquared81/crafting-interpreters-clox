@@ -1144,6 +1144,12 @@ static void del_statement(void) {
 }
 
 static void fun_declaration(void) {
+    if (check(TOKEN_LEFT_PAREN)) {
+        // Anonymous function.
+        function(TYPE_ANONYMOUS);
+        consume(TOKEN_SEMICOLON, "Expect ';' after anonymous function.");
+        return;
+    }
     uint32_t global = parse_variable("Expect function name.", false);
     mark_initialized();
     function(TYPE_FUNCTION);
