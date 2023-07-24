@@ -240,7 +240,10 @@ static bool create_dict(ulong length) {
             return false;
         }
         Value value = index[1];
-        table_set(&dict->contents, key, value);
+        if (!table_set(&dict->contents, key, value)) {
+            runtime_error("Dict keys must be unique.");
+            return false;
+        }
     }
     popn(2 * length);  // Pop all the key-value pairs.
     push(OBJ_VAL(dict));
